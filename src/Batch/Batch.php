@@ -29,18 +29,16 @@ class Batch {
 
     // Define the messaging the user should see by default.
     $batch_builder = (new BatchBuilder())
-      ->setTitle(t('Sample batch process.'))
+      ->setTitle(t('Downgrade Administrators'))
       ->setFinishCallback($finish_callback)
       ->setInitMessage(t('Starting up.'))
       ->setProgressMessage(t('Currently processing.'))
-      ->setErrorMessage(t('Process has encountered an error.'));
-
-    // Add as many operations as you would like. Each operation goes through
-    // the progress bar from start to finish, then goes on to the next batch.
-    $batch_builder->addOperation($operation_callback, [$items]);
+      ->setErrorMessage(t('Process has encountered an error.'))
+      ->addOperation($operation_callback, [$items]);
 
     // Set the batch.
     batch_set($batch_builder->toArray());
+
   }
 
   /**
@@ -155,7 +153,7 @@ class Batch {
       // A fatal error occurred.
       $message = t('There was an error with the asu_governance batch processor.');
       \Drupal::messenger()->addError($message);
-      \Drupal::logger('asu_governance')->error($message . PHP_EOL .  ' Backtrace: ' . print_r(debug_backtrace(), TRUE));
+      \Drupal::logger('asu_governance')->error($message . PHP_EOL . ' Backtrace: ' . print_r(debug_backtrace(), TRUE));
     }
   }
 

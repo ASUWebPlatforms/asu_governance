@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\asu_governance\Form;
 
-use Drupal\asu_governance\Services\ModulePermissionLoader;
+use Drupal\asu_governance\Services\ModulePermissionHandler;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Extension\ThemeHandlerInterface;
@@ -36,7 +36,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
   /**
    * The module permission loader service.
    *
-   * @var \Drupal\asu_governance\Services\ModulePermissionLoader
+   * @var \Drupal\asu_governance\Services\ModulePermissionHandler
    */
   protected $modulePermissionLoader;
 
@@ -48,6 +48,27 @@ final class GovernanceSettingsForm extends ConfigFormBase {
   protected $connection;
 
   /**
+   * Disallowed modules.
+   *
+   * @var string[]
+   */
+  public const DISALLOWED_MODULES = [
+    'asu_governance',
+  ];
+
+  /**
+   * Disallowed themes.
+   *
+   * @var string[]
+   */
+  public const DISALLOWED_THEMES = [
+    'bartik',
+    'stark',
+    'classy',
+    'stable',
+  ];
+
+  /**
    * Build the form.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
@@ -56,10 +77,10 @@ final class GovernanceSettingsForm extends ConfigFormBase {
    *   The module handler service.
    * @param \Drupal\Core\Extension\ThemeHandlerInterface $theme_handler
    *   The theme handler service.
-   * @param \Drupal\asu_governance\Services\ModulePermissionLoader $modulePermissionLoader
+   * @param \Drupal\asu_governance\Services\ModulePermissionHandler $modulePermissionLoader
    *   The module permission loader service.
    */
-  public function __construct(ConfigFactoryInterface $config_factory, ModuleHandlerInterface $module_handler, ThemeHandlerInterface $theme_handler, ModulePermissionLoader $modulePermissionLoader, Connection $connection) {
+  public function __construct(ConfigFactoryInterface $config_factory, ModuleHandlerInterface $module_handler, ThemeHandlerInterface $theme_handler, ModulePermissionHandler $modulePermissionLoader, Connection $connection) {
     parent::__construct($config_factory);
     $this->moduleHandler = $module_handler;
     $this->themeHandler = $theme_handler;
@@ -75,7 +96,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
       $container->get('config.factory'),
       $container->get('module_handler'),
       $container->get('theme_handler'),
-      $container->get('asu_governance.module_permission_loader'),
+      $container->get('asu_governance.module_permission_handler'),
       $container->get('database'),
     );
   }
@@ -112,6 +133,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
       '#description' => $this->t('<p>Add modules, <strong>one per line, <u>by machine name</u></strong>, that Site Builders will be able to enable/disable and configure.</p>
         <p><strong>Please note:</strong> ALL associated permissions for the modules listed above will be automatically updated on the <strong>Site Builder</strong> role when this form is saved or the module is enabled.</p>'),
       '#default_value' => implode("\n", $modulesInput),
+      '#required' => TRUE,
     ];
 
     $form['allowable_themes'] = [
@@ -119,6 +141,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
       '#title' => $this->t('Allowable Themes'),
       '#description' => $this->t('<p>Add themes, <strong>one per line, <u>by machine name</u></strong>, that Site Builders will be able to enable/disable and configure.</p>'),
       '#default_value' => implode("\n", $themesInput),
+      '#required' => TRUE,
     ];
 
     $form['allow_config_access'] = [
@@ -136,7 +159,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
     $form['permissions_users'] = [
       '#type' => 'textarea',
       '#title' => $this->t('Permissions Users'),
-      '#description' => $this->t('<p>Please list ASURITE IDs of users with the <strong>Site Builder</strong> role, <strong>one per line</strong>, that should be allowed to have limited permissions/roles administrative access.</p>'),
+      '#description' => $this->t('<p>Please list usernames (usually ASURITE IDs) of users with the <strong>Site Builder</strong> role, <strong>one per line</strong>, that should be allowed to have limited permissions/roles administrative access.</p>'),
       '#default_value' => implode("\n", $usersInput),
       '#states' => [
         'visible' => [
@@ -170,11 +193,9 @@ final class GovernanceSettingsForm extends ConfigFormBase {
     $modulesInput = array_filter(array_map('trim', explode("\n", $form_state->getValue('allowable_modules'))));
     $extensionDiscovery = new ExtensionDiscovery(\Drupal::root());
     $allModules = array_keys($extensionDiscovery->scan('module'));
-    $disallowedModules = ['asu_governance'];
     $badModules = [];
     $themesInput = array_filter(array_map('trim', explode("\n", $form_state->getValue('allowable_themes'))));
     $allThemes = array_keys($extensionDiscovery->scan('theme'));
-    $disallowedThemes = ['bartik', 'seven', 'stark', 'classy'];
     $badThemes = [];
     $currentTheme = $this->themeHandler->getDefault();
     $adminTheme = $this->config('system.theme')->get('admin');
@@ -183,13 +204,13 @@ final class GovernanceSettingsForm extends ConfigFormBase {
     $baseBlacklist = $this->modulePermissionLoader::BLACKLIST;
 
     foreach ($modulesInput as $module) {
-      if (!in_array($module, $allModules, TRUE) || in_array($module, $disallowedModules, TRUE)) {
+      if (!in_array($module, $allModules, TRUE) || in_array($module, self::DISALLOWED_MODULES, TRUE)) {
         $badModules[] = $module;
       }
     }
 
     foreach ($themesInput as $theme) {
-      if (!in_array($theme, $allThemes, TRUE) || in_array($theme, $disallowedThemes, TRUE)) {
+      if (!in_array($theme, $allThemes, TRUE) || in_array($theme, self::DISALLOWED_THEMES, TRUE)) {
         $badThemes[] = $theme;
       }
     }

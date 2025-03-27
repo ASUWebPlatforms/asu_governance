@@ -8,11 +8,11 @@ use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\user\Entity\Role;
 
 /**
- * Service to load permissions for all asu_governance allowed modules.
+ * Service to handle permissions for all asu_governance allowed modules.
  *
  * Allows to dynamically add/update them to the Site Builder role.
  */
-class ModulePermissionLoader {
+class ModulePermissionHandler {
 
   /**
    * The permission handler service.
@@ -35,7 +35,12 @@ class ModulePermissionLoader {
    */
   protected $configFactory;
 
-  public const array BLACKLIST = [
+  /**
+   * Blacklisted permissions.
+   *
+   * @var string[]
+   */
+  public const BLACKLIST = [
     'administer asu governance configuration',
     'administer actions',
     'administer modules',
@@ -49,7 +54,7 @@ class ModulePermissionLoader {
   ];
 
   /**
-   * Constructs the ModulePermissionLoader object.
+   * Constructs the ModulePermissionHandler object.
    *
    * @param \Drupal\user\PermissionHandlerInterface $permission_handler
    *   The permission handler service.
