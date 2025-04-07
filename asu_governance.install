@@ -55,10 +55,15 @@ function asu_governance_install() {
     return;
   }
 
+  // Add base permissions to the Site Builder role.
+  $modulePermissionLoader->addSiteBuilderBasePermissions();
+
   // Get the list of allowable modules.
   $allowableModules = \Drupal::config('asu_governance.settings')->get('allowable_modules');
   // Update the Site Builder role's permissions.
-  $modulePermissionLoader->addSiteBuilderPermissions($allowableModules);
+  $modulePermissionLoader->addSiteBuilderModulePermissions($allowableModules);
+  // Add Site Builder views permissions.
+  $modulePermissionLoader->addSiteBuilderViewsPermissions();
 
   try {
     // Downgrade all users with the 'admin' role to 'site_builder'.
@@ -70,8 +75,8 @@ function asu_governance_install() {
   }
 
   try {
-    // Apply permission blacklist to all roles but 'administrator'.
-    \Drupal::service('asu_governance.module_permission_handler')->blacklistPermissions();
+    // Apply permission blacklist to all roles but 'administrator' and 'site_builder'.
+    \Drupal::service('asu_governance.module_permission_handler')->revokeBlacklistedPermissions();
   }
   catch (Exception $e) {
     \Drupal::logger('asu_governance')->error('Could not apply blacklist.' . PHP_EOL . $e->getMessage());

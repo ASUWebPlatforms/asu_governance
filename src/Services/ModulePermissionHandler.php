@@ -2,7 +2,6 @@
 
 namespace Drupal\asu_governance\Services;
 
-use Drupal\Core\Cache\Cache;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\user\PermissionHandlerInterface;
@@ -350,6 +349,9 @@ class ModulePermissionHandler {
     $this->entityTypeManager = $entity_type_manager;
   }
 
+  /**
+   *  Create the Site Builder role.
+   */
   public function createSiteBuilderRole() {
     $role_storage = $this->entityTypeManager->getStorage('user_role');
     // Check if the Site Builder role already exists.
@@ -366,16 +368,12 @@ class ModulePermissionHandler {
     $role->save();
   }
 
-
   /**
-   * Add the Site Builder role's permissions.
-   *
-   * @param array $modules
-   *   An array of module names.
+   * Add the Site Builder role's base permissions.
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
-  public function addSiteBuilderPermissions(array $modules) {
+  public function addSiteBuilderBasePermissions() {
     // Load the Site Builder role.
     /** @var \Drupal\user\Entity\Role $role */
     $role = Role::load('site_builder');
@@ -398,6 +396,21 @@ class ModulePermissionHandler {
       }
     }
     $role->save();
+  }
+
+  /**
+   * Add the Site Builder role's module permissions.
+   *
+   * @param array $modules
+   *   An array of module names.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
+  public function addSiteBuilderModulePermissions(array $modules) {
+
+    // Load the Site Builder role.
+    /** @var \Drupal\user\Entity\Role $role */
+    $role = Role::load('site_builder');
 
     // Add module permissions.
     $allowed_modules = $this->configFactory->get('asu_governance.settings')->get('allowable_modules');
@@ -425,20 +438,28 @@ class ModulePermissionHandler {
         }
       }
     }
+    $role->save();
+  }
 
+  /**
+   * Add Site Builder role's access to administrative views.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
+  public function addSiteBuilderViewsPermissions() {
     // Adjust views display permissions to grant access to Site Builders.
     $view_storage = $this->entityTypeManager->getStorage('view');
     $views = $view_storage->loadMultiple();
     foreach ($views as $view_id => $view) {
       $view_config = $this->configFactory->getEditable('views.view.' . $view_id);
       $display_definitions = $view_config->get('display');
-      $config_changed = false;
+      $config_changed = FALSE;
       foreach ($display_definitions as $display_id => $display_definition) {
         $access_type = $display_definition['display_options']['access']['type'] ?? NULL;
         if ($access_type && $access_type === 'role') {
           if (isset($display_definition['display_options']['access']['options']['role']['administrator'])) {
             $view_config->set('display.' . $display_id . '.display_options.access.options.role.site_builder', 'site_builder');
-            $config_changed = true;
+            $config_changed = TRUE;
           }
         }
       }
@@ -446,7 +467,6 @@ class ModulePermissionHandler {
         $view_config->save();
       }
     }
-
   }
 
   /**
@@ -457,7 +477,7 @@ class ModulePermissionHandler {
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
-  public function revokeSiteBuilderPermissions(array $modules) {
+  public function revokeSiteBuilderModulePermissions(array $modules) {
     foreach ($modules as $module) {
       // Get the module's permissions.
       $modulePermissions = $this->getModulePermissions($module);
@@ -498,16 +518,16 @@ class ModulePermissionHandler {
   }
 
   /**
-   * Blacklist permissions for all roles, except for the administrator role.
+   * Revoke blacklisted permissions for all but administrator and site_builder.
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
-  public function blacklistPermissions() {
+  public function revokeBlacklistedPermissions() {
     $blacklist = $this::BLACKLIST;
     // Get all roles.
     $roles = Role::loadMultiple();
-    // Remove the administrator role from the list.
-    unset($roles['administrator']);
+    // Remove the administrator and site_builder roles from the list.
+    unset($roles['administrator'], $roles['site_builder']);
     // Loop through each role.
     foreach ($roles as $role) {
       // Get the role's permissions.
