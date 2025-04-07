@@ -326,7 +326,7 @@ class ModulePermissionHandler {
     'view update notifications',
     'export configuration',
     'import configuration',
-    'synchronize configuration'
+    'synchronize configuration',
   ];
 
   /**
@@ -434,6 +434,7 @@ class ModulePermissionHandler {
         }
       }
     }
+    $role->save();
   }
 
   /**

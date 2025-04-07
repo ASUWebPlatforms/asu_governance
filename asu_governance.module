@@ -179,7 +179,7 @@ function asu_governance_form_alter(&$form, FormStateInterface $form_state, $form
   $permsArrayFormIds = array_map(function ($item) {
     return str_replace('.', '_', $item);
   }, $permsArray);
-  if (in_array($form_id, $permsArrayFormIds, TRUE) && !in_array('administrator', $current_user->getRoles(), TRUE)) {
+  if (in_array($form_id, $permsArrayFormIds, TRUE)) {
     $blacklist = \Drupal::service('asu_governance.module_permission_handler')::BLACKLIST;
     foreach ($blacklist as $permission) {
       if (isset($form['permissions'][$permission])) {
