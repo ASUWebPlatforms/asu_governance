@@ -42,12 +42,13 @@ final class DowngradeAdmins {
     if (!((defined('MAINTENANCE_MODE') && (MAINTENANCE_MODE === 'update' || MAINTENANCE_MODE === 'install')) || \Drupal::request()->isMethod('POST'))) {
       // Process the batch.
       $batch = &batch_get();
+      $batch_id = \Drupal::state()->get('downgrade_admin_batch');
 
       foreach ($batch['sets'] as $key => $batch_set) {
         if ($batch_set['title']->__toString() === 'Downgrade Administrators') {
           $process_info = [
             'current_set' => $key,
-            'id' => NULL,
+            'id' => $batch_id,
             'progressive' => FALSE,
           ];
           $batch += $process_info;

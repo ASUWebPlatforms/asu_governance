@@ -65,7 +65,7 @@ class PermsRolesAccessCheck implements AccessInterface {
     }
     // Get the editable configuration for asu_governance.settings.
     $config = $this->configFactory->getEditable('asu_governance.settings');
-    if (in_array('administrator', $user->getRoles(), TRUE) || (in_array('site_builder', $user->getRoles(), TRUE) && $config->get('allow_roles_perms_admin') && in_array($user->get('name')->value, $config->get('permissions_users'), TRUE))) {
+    if ($user->hasRole('administrator') || ($user->hasRole('site_builder') && $config->get('allow_roles_perms_admin') && in_array($user->get('name')->value, $config->get('permissions_users'), TRUE))) {
       return AccessResult::allowed();
     }
 
