@@ -295,11 +295,11 @@ final class GovernanceSettingsForm extends ConfigFormBase {
     $modulesDiff = array_diff($originals, $modulesInput);
     if (!empty($modulesDiff)) {
       // Revoke permissions for modules that are no longer allowed.
-      $this->modulePermissionLoader->revokeSiteBuilderPermissions($modulesDiff);
+      $this->modulePermissionLoader->revokeSiteBuilderModulePermissions($modulesDiff);
     }
 
     // Update the Site Builder role's permissions.
-    $this->modulePermissionLoader->addSiteBuilderPermissions($modulesInput);
+    $this->modulePermissionLoader->addSiteBuilderModulePermissions($modulesInput);
 
     // Explode submitted themes textarea into an array and remove duplicates.
     $themesInput = array_unique(array_filter(array_map('trim', explode("\n", $form_state->getValue('allowable_themes')))));

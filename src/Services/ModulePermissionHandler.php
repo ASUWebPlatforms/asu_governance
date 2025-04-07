@@ -319,7 +319,6 @@ class ModulePermissionHandler {
    */
   public const BLACKLIST = [
     'administer asu governance configuration',
-    'administer actions',
     'administer modules',
     'administer permissions',
     'administer software updates',
@@ -327,8 +326,7 @@ class ModulePermissionHandler {
     'view update notifications',
     'export configuration',
     'import configuration',
-    'synchronize configuration',
-    'use PHP for settings',
+    'synchronize configuration'
   ];
 
   /**
@@ -370,12 +368,9 @@ class ModulePermissionHandler {
   /**
    * Add the Site Builder role's permissions.
    *
-   * @param array $modules
-   *   An array of module names.
-   *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
-  public function addSiteBuilderPermissions(array $modules) {
+  public function addSiteBuilderBasePermissions() {
     // Load the Site Builder role.
     /** @var \Drupal\user\Entity\Role $role */
     $role = Role::load('site_builder');
@@ -398,6 +393,20 @@ class ModulePermissionHandler {
       }
     }
     $role->save();
+  }
+  /**
+   * Add the Site Builder role's permissions.
+   *
+   * @param array $modules
+   *   An array of module names.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
+  public function addSiteBuilderModulePermissions(array $modules) {
+
+    // Load the Site Builder role.
+    /** @var \Drupal\user\Entity\Role $role */
+    $role = Role::load('site_builder');
 
     // Add module permissions.
     $allowed_modules = $this->configFactory->get('asu_governance.settings')->get('allowable_modules');
@@ -425,7 +434,14 @@ class ModulePermissionHandler {
         }
       }
     }
+  }
 
+  /**
+   * Add the Site Builder role's permissions to views.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
+  public function addSiteBuilderViewsPermissions() {
     // Adjust views display permissions to grant access to Site Builders.
     $view_storage = $this->entityTypeManager->getStorage('view');
     $views = $view_storage->loadMultiple();
@@ -446,7 +462,6 @@ class ModulePermissionHandler {
         $view_config->save();
       }
     }
-
   }
 
   /**
@@ -457,7 +472,7 @@ class ModulePermissionHandler {
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
-  public function revokeSiteBuilderPermissions(array $modules) {
+  public function revokeSiteBuilderModulePermissions(array $modules) {
     foreach ($modules as $module) {
       // Get the module's permissions.
       $modulePermissions = $this->getModulePermissions($module);
@@ -498,16 +513,16 @@ class ModulePermissionHandler {
   }
 
   /**
-   * Blacklist permissions for all roles, except for the administrator role.
+   * Revoke blacklisted permissions for all but administrator and site_builder.
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
-  public function blacklistPermissions() {
+  public function revokeBlacklistedPermissions() {
     $blacklist = $this::BLACKLIST;
     // Get all roles.
     $roles = Role::loadMultiple();
-    // Remove the administrator role from the list.
-    unset($roles['administrator']);
+    // Remove the administrator and site_builder roles from the list.
+    unset($roles['administrator'], $roles['site_builder']);
     // Loop through each role.
     foreach ($roles as $role) {
       // Get the role's permissions.
