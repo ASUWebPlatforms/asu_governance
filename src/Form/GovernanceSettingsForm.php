@@ -54,6 +54,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
    */
   public const DISALLOWED_MODULES = [
     'asu_governance',
+    'php',
   ];
 
   /**
@@ -204,25 +205,25 @@ final class GovernanceSettingsForm extends ConfigFormBase {
     $baseBlacklist = $this->modulePermissionLoader::BLACKLIST;
 
     foreach ($modulesInput as $module) {
-      if (!in_array($module, $allModules, TRUE) || in_array($module, self::DISALLOWED_MODULES, TRUE)) {
+      if (in_array($module, self::DISALLOWED_MODULES, TRUE)) {
         $badModules[] = $module;
       }
     }
 
     foreach ($themesInput as $theme) {
-      if (!in_array($theme, $allThemes, TRUE) || in_array($theme, self::DISALLOWED_THEMES, TRUE)) {
+      if (in_array($theme, self::DISALLOWED_THEMES, TRUE)) {
         $badThemes[] = $theme;
       }
     }
 
     // Throw error if entered module does not match modules available in code.
     if (!empty($badModules)) {
-      $form_state->setErrorByName('allowable_modules', $this->t('The following modules are either not valid or not allowed: <strong>@modules</strong>', ['@modules' => implode(', ', array_map(fn($module) => "\"$module\"", $badModules))]));
+      $form_state->setErrorByName('allowable_modules', $this->t('The following modules are not allowed: <strong>@modules</strong>', ['@modules' => implode(', ', array_map(fn($module) => "\"$module\"", $badModules))]));
     }
 
     // Throw error if entered theme does not match themes available in code.
     if (!empty($badThemes)) {
-      $form_state->setErrorByName('allowable_themes', $this->t('The following themes are either not valid or not allowed: <strong>@themes</strong>', ['@themes' => implode(', ', array_map(fn($theme) => "\"$theme\"", $badThemes))]));
+      $form_state->setErrorByName('allowable_themes', $this->t('The following themes are not allowed: <strong>@themes</strong>', ['@themes' => implode(', ', array_map(fn($theme) => "\"$theme\"", $badThemes))]));
     }
 
     // Throw error if entered theme does not match themes available in code.
@@ -257,9 +258,9 @@ final class GovernanceSettingsForm extends ConfigFormBase {
           $badUsers[] = $user;
         }
       }
-      // Throw error if entered permission does not match permissions available in code.
+      // Display warning if entered permissions are not available.
       if (!empty($badPermissions)) {
-        $form_state->setErrorByName('permissions_blacklist', $this->t('The following permissions are not valid: <strong>@perms</strong>', ['@perms' => implode(', ', array_map(fn($perm) => "\"$perm\"", $badPermissions))]));
+        $this->messenger()->addWarning($this->t('The following blacklisted permissions do not exist on the site: <strong>@perms</strong>. Please verify and adjust if needed.', ['@perms' => implode(', ', array_map(fn($perm) => "\"$perm\"", $badPermissions))]));
       }
 
       // Throw error if entered user does not match users available on the site.

@@ -2,7 +2,6 @@
 
 namespace Drupal\asu_governance\Services;
 
-use Drupal\Core\Cache\Cache;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\user\PermissionHandlerInterface;
@@ -319,6 +318,7 @@ class ModulePermissionHandler {
    */
   public const BLACKLIST = [
     'administer asu governance configuration',
+    'administer actions',
     'administer modules',
     'administer permissions',
     'administer software updates',
@@ -327,6 +327,10 @@ class ModulePermissionHandler {
     'export configuration',
     'import configuration',
     'synchronize configuration',
+    'use PHP for settings',
+    'masquerade as super user',
+    'masquerade as any user',
+    'masquerade as administrator',
   ];
 
   /**
@@ -348,6 +352,9 @@ class ModulePermissionHandler {
     $this->entityTypeManager = $entity_type_manager;
   }
 
+  /**
+   *  Create the Site Builder role.
+   */
   public function createSiteBuilderRole() {
     $role_storage = $this->entityTypeManager->getStorage('user_role');
     // Check if the Site Builder role already exists.
@@ -364,9 +371,8 @@ class ModulePermissionHandler {
     $role->save();
   }
 
-
   /**
-   * Add the Site Builder role's permissions.
+   * Add the Site Builder role's base permissions.
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
@@ -394,8 +400,9 @@ class ModulePermissionHandler {
     }
     $role->save();
   }
+  
   /**
-   * Add the Site Builder role's permissions.
+   * Add the Site Builder role's module permissions.
    *
    * @param array $modules
    *   An array of module names.
@@ -438,7 +445,7 @@ class ModulePermissionHandler {
   }
 
   /**
-   * Add the Site Builder role's permissions to views.
+   * Add Site Builder role's access to administrative views.
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
@@ -449,13 +456,13 @@ class ModulePermissionHandler {
     foreach ($views as $view_id => $view) {
       $view_config = $this->configFactory->getEditable('views.view.' . $view_id);
       $display_definitions = $view_config->get('display');
-      $config_changed = false;
+      $config_changed = FALSE;
       foreach ($display_definitions as $display_id => $display_definition) {
         $access_type = $display_definition['display_options']['access']['type'] ?? NULL;
         if ($access_type && $access_type === 'role') {
           if (isset($display_definition['display_options']['access']['options']['role']['administrator'])) {
             $view_config->set('display.' . $display_id . '.display_options.access.options.role.site_builder', 'site_builder');
-            $config_changed = true;
+            $config_changed = TRUE;
           }
         }
       }
