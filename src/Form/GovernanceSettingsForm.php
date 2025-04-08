@@ -258,9 +258,9 @@ final class GovernanceSettingsForm extends ConfigFormBase {
           $badUsers[] = $user;
         }
       }
-      // Throw error if entered permission does not match permissions available in code.
+      // Display warning if entered permissions are not available.
       if (!empty($badPermissions)) {
-        $form_state->setErrorByName('permissions_blacklist', $this->t('The following permissions are not valid: <strong>@perms</strong>', ['@perms' => implode(', ', array_map(fn($perm) => "\"$perm\"", $badPermissions))]));
+        $this->messenger()->addWarning($this->t('The following blacklisted permissions do not exist on the site: <strong>@perms</strong>. Please verify and adjust if needed.', ['@perms' => implode(', ', array_map(fn($perm) => "\"$perm\"", $badPermissions))]));
       }
 
       // Throw error if entered user does not match users available on the site.

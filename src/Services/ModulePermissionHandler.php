@@ -328,6 +328,9 @@ class ModulePermissionHandler {
     'import configuration',
     'synchronize configuration',
     'use PHP for settings',
+    'masquerade as super user',
+    'masquerade as any user',
+    'masquerade as administrator',
   ];
 
   /**
