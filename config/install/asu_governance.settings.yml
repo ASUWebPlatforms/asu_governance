@@ -29,6 +29,8 @@ allowable_modules:
   - webspark_module_asu_breadcrumb
   - webspark_utility
   - webspark_webdir
+  - captcha
+  - editoria11y
 allowable_themes:
   - claro
   - radix
