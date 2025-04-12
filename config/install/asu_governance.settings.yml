@@ -35,3 +35,18 @@ allowable_themes:
   - claro
   - radix
   - renovation
+permissions_blacklist:
+  - administer asu governance configuration
+  - administer actions
+  - administer modules
+  - administer permissions
+  - administer software updates
+  - administer themes
+  - view update notifications
+  - export configuration
+  - import configuration
+  - synchronize configuration
+  - use PHP for settings
+  - masquerade as super user
+  - masquerade as any user
+  - masquerade as administrator

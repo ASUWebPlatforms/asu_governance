@@ -186,7 +186,28 @@ class CuratedModulesListForm extends ModulesListForm {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     parent::submitForm($form, $form_state);
-    $route_name = !empty($modules['non_stable']) ? 'system.modules_list_non_stable_confirm' : 'asu_governance.modules_list_confirm';
+
+    // Retrieve a list of modules to install and their dependencies.
+    $checkedModules = $form_state->getUserInput()['modules'];
+
+    $governanceSettings = $this->config('asu_governance.settings');
+    // Get the original values.
+    $allowable = $governanceSettings->get('allowable_modules');
+    $installable = array_keys(array_filter($checkedModules, function ($module) {
+      return $module['enable'] === '1';
+    }));
+    $addPermissions = array_filter($installable, function ($module) use ($allowable) {
+      return in_array($module, $allowable, TRUE);
+    });
+
+    if (!empty($addPermissions)) {
+      // Get the module permission loader service.
+      $modulePermissionHandler = \Drupal::service('asu_governance.module_permission_handler');
+      // Revoke permissions for modules that are no longer allowed.
+      $modulePermissionHandler->addSiteBuilderModulePermissions($addPermissions);
+    }
+
+    $route_name = 'asu_governance.modules_list_confirm';
     // Redirect to the confirmation form.
     $form_state->setRedirect($route_name);
   }
