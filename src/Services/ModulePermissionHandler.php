@@ -3,9 +3,11 @@
 namespace Drupal\asu_governance\Services;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Discovery\YamlDiscovery;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\Utility\CallableResolver;
 use Drupal\user\Entity\Role;
 use Drupal\user\PermissionHandlerInterface;
 
@@ -47,6 +49,13 @@ class ModulePermissionHandler {
   protected $entityTypeManager;
 
   /**
+   * The callable resolver.
+   *
+   * @var \Drupal\Core\Utility\CallableResolver
+   */
+  protected CallableResolver $callableResolver;
+
+  /**
    * Constructs the ModulePermissionHandler object.
    *
    * @param \Drupal\user\PermissionHandlerInterface $permission_handler
@@ -57,12 +66,15 @@ class ModulePermissionHandler {
    *   The config factory.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager service.
+   * @param \Drupal\Core\Utility\CallableResolver $callable_resolver
+   *   The callable resolver service.
    */
-  public function __construct(PermissionHandlerInterface $permission_handler, ModuleHandlerInterface $module_handler, ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(PermissionHandlerInterface $permission_handler, ModuleHandlerInterface $module_handler, ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, CallableResolver $callable_resolver) {
     $this->permissionHandler = $permission_handler;
     $this->moduleHandler = $module_handler;
     $this->configFactory = $config_factory;
     $this->entityTypeManager = $entity_type_manager;
+    $this->callableResolver = $callable_resolver;
   }
 
   /**
@@ -129,41 +141,68 @@ class ModulePermissionHandler {
    *
    * @param array $modules
    *   An array of module names.
+   * @param ?string $source
+   *   The source of the function call.
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
-  public function addSiteBuilderModulePermissions(array $modules) {
-
+  public function addSiteBuilderModulePermissions(array $modules, $source = NULL) {
     // Load the Site Builder role.
     /** @var \Drupal\user\Entity\Role $role */
     $role = Role::load('site_builder');
-
-    // Add module permissions.
-    $allowed_modules = $this->configFactory->get('asu_governance.settings')->get('allowable_modules');
-    // Get the role's permissions.
-    $siteBuilderPerms = $role->getPermissions();
     foreach ($modules as $module) {
-      // Skip modules that are not enabled or not allowed
-      // in asu_governance module's settings form.
-      if (!$this->moduleHandler->moduleExists($module) || !in_array($module, $allowed_modules, TRUE)) {
-        continue;
-      }
       // Get the module's permissions.
       $modulePermissions = $this->getModulePermissions($module);
       if (empty($modulePermissions)) {
-        continue;
-      }
-      // Find the difference between the module permissions and
-      // the Site Builder role's permissions.
-      $diff = array_diff($modulePermissions, $siteBuilderPerms);
-      // If there are differences, add them to the Site Builder role.
-      if (!empty($diff)) {
-        // Grant permission for each role in the diff array.
-        foreach ($modulePermissions as $permission) {
-          $permissionBlacklist = $this->configFactory->get('asu_governance.settings')->get('permissions_blacklist');
-          if (!in_array($permission, $permissionBlacklist, TRUE)) {
-            $role->grantPermission($permission);
+        if ($source !== 'asu_governance_curated_modules') {
+          // Skip the rest of the code if this method is called from anywhere
+          // other than the curated modules form.
+          continue;
+        }
+        // Due to an order of operations issue, when enabling permissions within
+        // the submit function of the curated modules form, the module may not
+        // appear as being enabled yet. This is a workaround to ensure that the
+        // permissions are still added. The following code is adapted from the
+        // buildPermissionsYaml() method in the PermissionsHandler class.
+        // See https://rb.gy/kmidmp
+        $moduleExtensionList = \Drupal::service('extension.list.module');
+        $path = DRUPAL_ROOT . '/' . $moduleExtensionList->getPath($module);
+        $yamlDiscovery = new YamlDiscovery('permissions', [$module => $path]);
+        $discoveredPermissions = current($yamlDiscovery->findAll());
+        $all_callback_permissions = [];
+        if (isset($discoveredPermissions['permission_callbacks'])) {
+          foreach ($discoveredPermissions['permission_callbacks'] as $permission_callback) {
+            $callback = $this->callableResolver->getCallableFromDefinition($permission_callback);
+            if ($callback_permissions = call_user_func($callback)) {
+              // Add any callback permissions to the array of permissions. Any
+              // defaults can then get processed below.
+              foreach ($callback_permissions as $name => $callback_permission) {
+                if (!is_array($callback_permission)) {
+                  $callback_permission = [
+                    'title' => $callback_permission,
+                  ];
+                }
+                $callback_permission += [
+                  'description' => NULL,
+                  'provider' => $module,
+                ];
+                $all_callback_permissions[$name] = $callback_permission;
+              }
+            }
           }
+          unset($discoveredPermissions['permission_callbacks']);
+        }
+        $discoveredPermissions = !empty($all_callback_permissions) && !empty($discoveredPermissions) ? array_merge($discoveredPermissions, $all_callback_permissions) : $discoveredPermissions;
+        if (empty($discoveredPermissions)) {
+          continue;
+        }
+        $modulePermissions = array_keys($discoveredPermissions);
+      }
+      // Grant permissions not in the blacklist.
+      foreach ($modulePermissions as $permission) {
+        $permissionBlacklist = $this->configFactory->get('asu_governance.settings')->get('permissions_blacklist');
+        if (!in_array($permission, $permissionBlacklist, TRUE)) {
+          $role->grantPermission($permission);
         }
       }
     }

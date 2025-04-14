@@ -7,6 +7,7 @@
 
 use Drupal\user\Entity\Role;
 use Drupal\user\Entity\User;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Implements hook_install().
@@ -105,9 +106,20 @@ function asu_governance_install() {
 }
 
 /**
- * Add Content Editor if it does not exist.
+ * Update configs and add Content Editor role.
  */
 function asu_governance_update_10000() {
+  // Get the extension list service.
+  $module_extension_list = \Drupal::service('extension.list.module');
+  $path = $module_extension_list->getPath('asu_governance') . '/config/install/asu_governance.settings.yml';
+  $yaml_data = Yaml::parse(file_get_contents($path));
+  $blacklist = $yaml_data['permissions_blacklist'];
+
+// Update the active configuration to include the base blacklist.
+  $config = \Drupal::configFactory()->getEditable('asu_governance.settings');
+  $config->set('permissions_blacklist', $blacklist);
+  $config->save();
+
   // Get the module permission loader service.
   $modulePermissionHandler = \Drupal::service('asu_governance.module_permission_handler');
   $roles = Role::loadMultiple();
@@ -126,4 +138,5 @@ function asu_governance_update_10000() {
     // Add base permissions to the Site Builder role.
     $modulePermissionHandler->addBasePermissions('content_editor', 'BASE_CE_PERMISSIONS');
   }
+
 }
