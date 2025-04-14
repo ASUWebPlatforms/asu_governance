@@ -44,6 +44,13 @@ class CuratedModulesListForm extends ModulesListForm {
   protected $messenger;
 
   /**
+   * The module permission handler.
+   *
+   * @var \Drupal\asu_governance\ModulePermissionHandlerInterface
+   */
+  protected $modulePermissionHandler;
+
+  /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
@@ -55,7 +62,8 @@ class CuratedModulesListForm extends ModulesListForm {
       $container->get('current_user'),
       $container->get('user.permissions'),
       $container->get('extension.list.module'),
-      $container->get('messenger')
+      $container->get('messenger'),
+      $container->get('asu_governance.module_permission_handler')
     );
   }
 
@@ -79,10 +87,11 @@ class CuratedModulesListForm extends ModulesListForm {
    * @param \Drupal\Core\Messenger\Messenger $messenger
    *   The messenger service.
    */
-  public function __construct(ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, KeyValueStoreExpirableInterface $key_value_expirable, AccessManagerInterface $access_manager, AccountInterface $current_user, PermissionHandlerInterface $permission_handler, ModuleExtensionList $extension_list_module, Messenger $messenger) {
+  public function __construct(ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, KeyValueStoreExpirableInterface $key_value_expirable, AccessManagerInterface $access_manager, AccountInterface $current_user, PermissionHandlerInterface $permission_handler, ModuleExtensionList $extension_list_module, Messenger $messenger, $modulePermissionHandler) {
     parent::__construct($module_handler, $module_installer, $key_value_expirable, $access_manager, $current_user, $permission_handler, $extension_list_module);
     $this->allowableModules = !empty($this->config('asu_governance.settings')->get('allowable_modules')) ? $this->config('asu_governance.settings')->get('allowable_modules') : $this->config('asu_governance.settings')->get('allowable_modules');
     $this->messenger = $messenger;
+    $this->modulePermissionHandler = $modulePermissionHandler;
   }
 
   /**
@@ -189,22 +198,22 @@ class CuratedModulesListForm extends ModulesListForm {
 
     // Retrieve a list of modules to install and their dependencies.
     $checkedModules = $form_state->getUserInput()['modules'];
-
+    // Get the configuration settings.
     $governanceSettings = $this->config('asu_governance.settings');
-    // Get the original values.
+    // Get the list of allowable modules.
     $allowable = $governanceSettings->get('allowable_modules');
+    // Filter the list of modules to only those that are checked.
     $installable = array_keys(array_filter($checkedModules, function ($module) {
       return $module['enable'] === '1';
     }));
+    // Filter the list of installable modules to only those that are allowed.
     $addPermissions = array_filter($installable, function ($module) use ($allowable) {
       return in_array($module, $allowable, TRUE);
     });
-
+    //
     if (!empty($addPermissions)) {
-      // Get the module permission loader service.
-      $modulePermissionHandler = \Drupal::service('asu_governance.module_permission_handler');
-      // Revoke permissions for modules that are no longer allowed.
-      $modulePermissionHandler->addSiteBuilderModulePermissions($addPermissions);
+      // Add permissions to the Site Builder role.
+      $this->modulePermissionHandler->addSiteBuilderModulePermissions($addPermissions);
     }
 
     $route_name = 'asu_governance.modules_list_confirm';
