@@ -115,12 +115,12 @@ function asu_governance_update_10000() {
   $yaml_data = Yaml::parse(file_get_contents($path));
   $blacklist = $yaml_data['permissions_blacklist'];
 
-// Update the active configuration to include the base blacklist.
+  // Update the active configuration to include the base blacklist.
   $config = \Drupal::configFactory()->getEditable('asu_governance.settings');
   $config->set('permissions_blacklist', $blacklist);
   $config->save();
 
-  // Get the module permission loader service.
+  // Get the module permission handler service.
   $modulePermissionHandler = \Drupal::service('asu_governance.module_permission_handler');
   $roles = Role::loadMultiple();
   if (!in_array('content_editor', array_keys($roles), TRUE)) {

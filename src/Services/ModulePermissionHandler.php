@@ -83,8 +83,8 @@ class ModulePermissionHandler {
   public function createRole($role_id, $role_name) {
     $role_storage = $this->entityTypeManager->getStorage('user_role');
     // Check if the role already exists.
-    $content_editor = $role_storage->load($role_id);
-    if ($content_editor) {
+    $loadedRole = $role_storage->load($role_id);
+    if ($loadedRole) {
       // Role already exists, no need to create it again.
       return;
     }
