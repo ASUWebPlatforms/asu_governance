@@ -178,7 +178,7 @@ function asu_governance_form_alter(&$form, FormStateInterface $form_state, $form
     return str_replace('.', '_', $item);
   }, $permsArray);
   if (in_array($form_id, $permsArrayFormIds, TRUE)) {
-    $blacklist = \Drupal::service('asu_governance.module_permission_handler')::BLACKLIST;
+    $blacklist = \Drupal::configFactory()->get('asu_governance.settings')->get('permissions_blacklist');
     foreach ($blacklist as $permission) {
       if (isset($form['permissions'][$permission])) {
         $form['permissions'][$permission]['#disabled'] = TRUE;
