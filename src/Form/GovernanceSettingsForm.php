@@ -38,7 +38,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
    *
    * @var \Drupal\asu_governance\Services\ModulePermissionHandler
    */
-  protected $modulePermissionLoader;
+  protected $modulePermissionHandler;
 
   /**
    * The database connection.
@@ -78,14 +78,14 @@ final class GovernanceSettingsForm extends ConfigFormBase {
    *   The module handler service.
    * @param \Drupal\Core\Extension\ThemeHandlerInterface $theme_handler
    *   The theme handler service.
-   * @param \Drupal\asu_governance\Services\ModulePermissionHandler $modulePermissionLoader
+   * @param \Drupal\asu_governance\Services\ModulePermissionHandler $modulePermissionHandler
    *   The module permission loader service.
    */
-  public function __construct(ConfigFactoryInterface $config_factory, ModuleHandlerInterface $module_handler, ThemeHandlerInterface $theme_handler, ModulePermissionHandler $modulePermissionLoader, Connection $connection) {
+  public function __construct(ConfigFactoryInterface $config_factory, ModuleHandlerInterface $module_handler, ThemeHandlerInterface $theme_handler, ModulePermissionHandler $modulePermissionHandler, Connection $connection) {
     parent::__construct($config_factory);
     $this->moduleHandler = $module_handler;
     $this->themeHandler = $theme_handler;
-    $this->modulePermissionLoader = $modulePermissionLoader;
+    $this->modulePermissionHandler = $modulePermissionHandler;
     $this->connection = $connection;
   }
 
@@ -128,7 +128,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
     $themesInput = $config->get('allowable_themes') ?? [];
     $usersInput = $config->get('permissions_users') ?? [];
     $blacklistInput = $config->get('permissions_blacklist') ?? [];
-    $baseBlacklist = $this->modulePermissionLoader::BASE_BLACKLIST;
+    $baseBlacklist = $this->modulePermissionHandler::BASE_BLACKLIST;
     $form['allowable_modules'] = [
       '#type' => 'textarea',
       '#title' => $this->t('Allowable Modules with Permissions'),
@@ -196,7 +196,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
     $adminTheme = $this->config('system.theme')->get('admin');
     $includesDefault = in_array($currentTheme, $themesInput, TRUE);
     $includesAdmin = in_array($adminTheme, $themesInput, TRUE);
-    $baseBlacklist = $this->modulePermissionLoader::BASE_BLACKLIST;
+    $baseBlacklist = $this->modulePermissionHandler::BASE_BLACKLIST;
     $blacklistInput = array_filter(array_map('trim', explode("\n", $form_state->getValue('permissions_blacklist'))));
     $allPermissions = array_keys(\Drupal::service('user.permissions')->getPermissions());
     $missingPermissions = array_diff($baseBlacklist, $blacklistInput);
@@ -292,11 +292,11 @@ final class GovernanceSettingsForm extends ConfigFormBase {
     $modulesDiff = array_diff($originals, $modulesInput);
     if (!empty($modulesDiff)) {
       // Revoke permissions for modules that are no longer allowed.
-      $this->modulePermissionLoader->revokeSiteBuilderModulePermissions($modulesDiff);
+      $this->modulePermissionHandler->revokeSiteBuilderModulePermissions($modulesDiff);
     }
 
     // Update the Site Builder role's permissions.
-    $this->modulePermissionLoader->addSiteBuilderModulePermissions($modulesInput);
+    $this->modulePermissionHandler->addSiteBuilderModulePermissions($modulesInput);
 
     // Explode submitted themes textarea into an array and remove duplicates.
     $themesInput = array_unique(array_filter(array_map('trim', explode("\n", $form_state->getValue('allowable_themes')))));

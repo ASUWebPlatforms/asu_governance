@@ -19,6 +19,7 @@ use Drupal\user\PermissionHandlerInterface;
 use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Component\Utility\Xss;
+use Drupal\asu_governance\Services\ModulePermissionHandler;
 
 /**
  * Provides module installation interface.
@@ -47,7 +48,7 @@ class CuratedModulesListForm extends ModulesListForm {
   /**
    * The module permission handler.
    *
-   * @var \Drupal\asu_governance\ModulePermissionHandler
+   * @var \Drupal\asu_governance\Services\ModulePermissionHandler
    */
   protected $modulePermissionHandler;
 
@@ -87,7 +88,7 @@ class CuratedModulesListForm extends ModulesListForm {
    *   The module extension list.
    * @param \Drupal\Core\Messenger\Messenger $messenger
    *   The messenger service.
-   * @param \Drupal\asu_governance\ModulePermissionHandler $modulePermissionHandler
+   * @param \Drupal\asu_governance\Services\ModulePermissionHandler $modulePermissionHandler
    *   The module permission handler.
    */
   public function __construct(ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, KeyValueStoreExpirableInterface $key_value_expirable, AccessManagerInterface $access_manager, AccountInterface $current_user, PermissionHandlerInterface $permission_handler, ModuleExtensionList $extension_list_module, Messenger $messenger, ModulePermissionHandler $modulePermissionHandler) {
