@@ -36,20 +36,9 @@ class Batch {
       ->setErrorMessage(t('Process has encountered an error.'))
       ->addOperation($operation_callback, [$items]);
 
-    $batch_storage = \Drupal::service('batch.storage');
-    $batch_id = $batch_storage->getId();
-
     // Set the batch.
     batch_set($batch_builder->toArray());
 
-    $batch = &batch_get();
-    if (!empty($batch)) {
-      if (empty($batch['id'])) {
-        $batch['id'] = $batch_id; // Manually set the ID.
-      }
-      // Save the batch ID to state storage.
-      \Drupal::state()->set('downgrade_admin_batch', $batch['id']);
-    }
   }
 
   /**

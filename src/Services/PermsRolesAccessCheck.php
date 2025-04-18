@@ -32,7 +32,7 @@ class PermsRolesAccessCheck implements AccessInterface {
   public function __construct(
     private readonly EntityTypeManagerInterface $entityTypeManager,
     private readonly MessengerInterface $messenger,
-    private readonly loggerChannelFactoryInterface $loggerChannelFactory,
+    private readonly LoggerChannelFactoryInterface $loggerChannelFactory,
     private readonly ConfigFactoryInterface $configFactory
   ) {
   }
@@ -65,7 +65,7 @@ class PermsRolesAccessCheck implements AccessInterface {
     }
     // Get the editable configuration for asu_governance.settings.
     $config = $this->configFactory->getEditable('asu_governance.settings');
-    if ($user->hasRole('administrator') || ($user->hasRole('site_builder') && $config->get('allow_roles_perms_admin') && in_array($user->get('name')->value, $config->get('permissions_users'), TRUE))) {
+    if (in_array('administrator', $user->getRoles(), TRUE) || (in_array('site_builder', $user->getRoles(), TRUE) && $config->get('allow_roles_perms_admin') && in_array($user->get('name')->value, $config->get('permissions_users'), TRUE))) {
       return AccessResult::allowed();
     }
 
