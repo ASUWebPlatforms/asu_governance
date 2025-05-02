@@ -5,6 +5,7 @@ namespace Drupal\asu_governance\Controller;
 use Drupal\Core\Extension\ExtensionLifecycle;
 use Drupal\Core\Extension\ModuleExtensionList;
 use Drupal\Core\Extension\ThemeExtensionList;
+use Drupal\Core\Extension\ThemeHandlerInterface;
 use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Menu\MenuLinkTreeInterface;
@@ -34,21 +35,21 @@ class CuratedSystemController extends SystemController {
    *   The theme access checker service.
    * @param \Drupal\Core\Form\FormBuilderInterface $form_builder
    *   The form builder.
+   * @param \Drupal\Core\Extension\ThemeHandlerInterface $theme_handler
+   *    The theme handler.
    * @param \Drupal\Core\Menu\MenuLinkTreeInterface $menu_link_tree
    *   The menu link tree service.
    * @param \Drupal\Core\Extension\ModuleExtensionList $module_extension_list
    *   The module extension list.
-   * @param \Drupal\Core\Extension\ThemeExtensionList $theme_extension_list
-   *   The theme extension list.
    */
-  public function __construct(SystemManager $systemManager, ThemeAccessCheck $theme_access, FormBuilderInterface $form_builder, MenuLinkTreeInterface $menu_link_tree, ModuleExtensionList $module_extension_list, ThemeExtensionList $theme_extension_list) {
+  public function __construct(SystemManager $systemManager, ThemeAccessCheck $theme_access, FormBuilderInterface $form_builder, ThemeHandlerInterface $theme_handler, MenuLinkTreeInterface $menu_link_tree, ModuleExtensionList $module_extension_list) {
     parent::__construct(
       $systemManager,
       $theme_access,
       $form_builder,
+      $theme_handler,
       $menu_link_tree,
-      $module_extension_list,
-      $theme_extension_list);
+      $module_extension_list);
     $this->allowableThemes = $this->config('asu_governance.settings')->get('allowable_themes') ?? [];
   }
 
@@ -61,7 +62,7 @@ class CuratedSystemController extends SystemController {
   public function themesPage() :array {
     $config = $this->config('system.theme');
     // Get all available themes.
-    $allThemes = array_filter($this->themeExtensionList->reset()->getList(), function ($module) {
+    $allThemes = array_filter($this->themeHandler->rebuildThemeData(), function ($module) {
       return !$module->isObsolete();
     });
 

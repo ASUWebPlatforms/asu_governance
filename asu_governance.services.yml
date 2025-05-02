@@ -9,6 +9,7 @@ services:
   asu_governance.config_access_check:
     class: Drupal\asu_governance\Services\ConfigAccessCheck
     autowire: true
+    arguments: [ '@entity_type.manager' ]
     tags:
       - { name: access_check, applies_to: _allow_asu_config_access }
     Drupal\asu_governance\Services\ConfigAccessCheck: '@asu_governance.config_access_check'
@@ -16,6 +17,7 @@ services:
   asu_governance.perms_roles_access_check:
     class: Drupal\asu_governance\Services\PermsRolesAccessCheck
     autowire: true
+    arguments: [ '@entity_type.manager', '@messenger', '@logger.factory', '@config.factory' ]
     tags:
       - { name: access_check, applies_to: _custom_perms_roles }
     Drupal\asu_governance\Services\PermsRolesAccessCheck: '@asu_governance.perms_roles_access_check'
@@ -28,5 +30,5 @@ services:
 
   asu_governance.module_permission_handler:
     class: Drupal\asu_governance\Services\ModulePermissionHandler
-    arguments: [ '@user.permissions', '@module_handler', '@config.factory' ]
+    arguments: [ '@user.permissions', '@module_handler', '@config.factory', '@entity_type.manager', '@controller_resolver' ]
     Drupal\asu_governance\Services\ModulePermissionHandler: '@asu_governance.module_permission_handler'
