@@ -163,7 +163,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
     $form['allow_roles_perms_admin'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('<strong>Allow roles and permissions administration</strong>'),
-      '#description' => $this->t('If checked, users with the <strong>Site Builder</strong> role will be able to manage roles and permissions.'),
+      '#description' => $this->t('If checked, specified users with the <strong>Site Builder</strong> role will be able to manage roles and permissions.'),
       '#default_value' => $config->get('allow_roles_perms_admin') ?? FALSE,
     ];
     $form['permissions_users'] = [
