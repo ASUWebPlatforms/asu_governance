@@ -2,6 +2,7 @@
 
 namespace Drupal\asu_governance\Form;
 
+use Drupal\asu_governance\Services\ModulePermissionHandler;
 use Drupal\Core\Access\AccessManagerInterface;
 use Drupal\Core\Discovery\YamlDiscovery;
 use Drupal\Core\Extension\InfoParserException;
@@ -19,7 +20,6 @@ use Drupal\user\PermissionHandlerInterface;
 use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Component\Utility\Xss;
-use Drupal\asu_governance\Services\ModulePermissionHandler;
 
 /**
  * Provides module installation interface.

@@ -674,6 +674,7 @@ class ModulePermissionHandler {
     'masquerade as super user',
     'masquerade as any user',
     'masquerade as administrator',
+    'switch users',
   ];
 
   /**
