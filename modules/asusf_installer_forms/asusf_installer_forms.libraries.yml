@@ -1,0 +1,4 @@
+installer_forms:
+  css:
+    theme:
+      css/installer-form.css: {}

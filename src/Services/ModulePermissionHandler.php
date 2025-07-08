@@ -215,6 +215,10 @@ class ModulePermissionHandler {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function addSiteBuilderViewsPermissions() {
+    if (!$this->entityTypeManager->hasDefinition('view')) {
+      // The 'view' entity type does not exist, so skip further processing.
+      return;
+    }
     // Adjust views display permissions to grant access to Site Builders.
     $view_storage = $this->entityTypeManager->getStorage('view');
     $views = $view_storage->loadMultiple();

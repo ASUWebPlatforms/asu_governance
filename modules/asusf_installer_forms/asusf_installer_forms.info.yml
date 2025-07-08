@@ -1,0 +1,4 @@
+name: 'ASU SiteFactory Install and Configure'
+type: module
+description: 'Contains the subforms for each step of the installation form'
+core_version_requirement: ^8.8 || ^9 || ^10
