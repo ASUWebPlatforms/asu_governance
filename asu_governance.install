@@ -111,15 +111,15 @@ function asu_governance_install() {
   // Set up purge if in code and not yet enabled.
   if ($purgeInCode && !\Drupal::moduleHandler()->moduleExists('purge')) {
     try {
-      __setup_purge();
+      __asu_governance_setup_purge();
     } catch (Exception $e) {
-      \Drupal::logger('webspark')->error('Error setting up Purge: @message', ['@message' => $e->getMessage()]);
+      \Drupal::logger('asu_governance')->error('Error setting up Purge: @message', ['@message' => $e->getMessage()]);
       \Drupal::messenger()->addError(t('Error setting up Purge. See logs for details.'));
     }
   }
 }
 
-function __setup_purge() {
+function __asu_governance_setup_purge() {
   // Enable the purge modules.
   $module_installer = \Drupal::service("module_installer");
   $module_list = [
@@ -161,7 +161,7 @@ function __setup_purge() {
       }
     }
   } catch (\Exception $e) {
-    \Drupal::logger('webspark')->error('Error enabling Acquia Purge plugin: @message', ['@message' => $e->getMessage()]);
+    \Drupal::logger('asu_governance')->error('Error enabling Acquia Purge plugin: @message', ['@message' => $e->getMessage()]);
   }
 }
 

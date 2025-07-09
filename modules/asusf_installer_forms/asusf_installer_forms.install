@@ -24,10 +24,10 @@ function asusf_installer_forms_install() {
     $block = Block::create([
       'id' => 'multi_step_form_instance',
       'plugin' => 'site_config_multi_step_form_block',
-      'region' => 'pre_content',
+      'region' => 'header',
       'theme' => $theme,
       'visibility' => [],
-      'weight' => 0,
+      'weight' => 10,
       'status' => 1,
       'label' => 'Multi-step Setup Form',
     ]);

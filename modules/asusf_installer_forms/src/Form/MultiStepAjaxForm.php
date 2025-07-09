@@ -33,22 +33,24 @@ class MultiStepAjaxForm extends FormBase {
 
     switch ($step) {
       case 1:
-        $form['steps']['step_1'] = [
-          '#type' => 'container',
-        ];
-        AsusfConfigureSitemapXMLForm::buildBaseUrlFields($form['steps']['step_1']);
+        $form['steps']['step_1'] = ['#type' => 'container'];
+        AsusfConfigureSiteInfoForm::buildSiteInfoFields($form['steps']['step_1']);
         break;
       case 2:
         $form['steps']['step_2'] = ['#type' => 'container'];
-        AsusfConfigureHeaderForm::buildParentUnitFields($form['steps']['step_2']);
+        AsusfConfigureSitemapXMLForm::buildBaseUrlFields($form['steps']['step_2']);
         break;
       case 3:
         $form['steps']['step_3'] = ['#type' => 'container'];
-        AsusfConfigureGAForm::buildAnalyticsFields($form['steps']['step_3']);
+        AsusfConfigureParentUnitForm::buildParentUnitFields($form['steps']['step_3']);
         break;
       case 4:
         $form['steps']['step_4'] = ['#type' => 'container'];
-        AsusfConfigurePurgerForm::buildPurgerConfigFields($form['steps']['step_4']);
+        AsusfConfigureGAForm::buildAnalyticsFields($form['steps']['step_4']);
+        break;
+      case 5:
+        $form['steps']['step_5'] = ['#type' => 'container'];
+        AsusfConfigurePurgerForm::buildPurgerConfigFields($form['steps']['step_5']);
         break;
     }
 
@@ -56,7 +58,7 @@ class MultiStepAjaxForm extends FormBase {
       '#type' => 'actions',
     ];
 
-    if ($step < 4) { // Adjust for total steps
+    if ($step < 5) { // Adjust for total steps
       $form['steps']['actions']['next'] = [
         '#type' => 'submit',
         '#value' => $this->t('Next'),
@@ -86,7 +88,14 @@ class MultiStepAjaxForm extends FormBase {
   public function goToNextStep(array &$form, FormStateInterface $form_state) {
     switch ($form_state->get('step')) {
       case 1:
-        AsusfConfigureSitemapXMLForm::validateBaseUrl($form['steps']['step_1'], $form_state);
+        if (!$form_state->hasAnyErrors()) {
+          AsusfConfigureSiteInfoForm::submitSiteInfo($form_state);
+          $form_state->set('step', $form_state->get('step') + 1);
+          $form_state->setRebuild();
+        }
+        break;
+      case 2:
+        AsusfConfigureSitemapXMLForm::validateBaseUrl($form['steps']['step_2'], $form_state);
         if (!$form_state->hasAnyErrors()) {
           $config_factory = \Drupal::configFactory();
           $config_factory->getEditable('simple_sitemap.settings')
@@ -97,15 +106,15 @@ class MultiStepAjaxForm extends FormBase {
           $form_state->setRebuild();
         }
         break;
-      case 2:
+      case 3:
         if (!$form_state->hasAnyErrors()) {
-          AsusfConfigureHeaderForm::submitParentUnit($form_state);
+          AsusfConfigureParentUnitForm::submitParentUnit($form_state);
           $form_state->set('step', $form_state->get('step') + 1);
           $form_state->setRebuild();
         }
 
         break;
-      case 3:
+      case 4:
         if (!$form_state->hasAnyErrors()) {
           AsusfConfigureGAForm::submitAnalyticsSettings($form_state);
           $form_state->set('step', $form_state->get('step') + 1);
@@ -113,11 +122,6 @@ class MultiStepAjaxForm extends FormBase {
         }
         break;
     }
-  }
-
-  public function goToPreviousStep(array &$form, FormStateInterface $form_state) {
-    $form_state->set('step', $form_state->get('step') - 1);
-    $form_state->setRebuild();
   }
 
   /**

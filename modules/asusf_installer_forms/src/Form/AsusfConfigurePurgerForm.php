@@ -31,13 +31,13 @@ class AsusfConfigurePurgerForm extends ConfigFormBase {
    *   The form array to modify.
    */
   public static function buildPurgerConfigFields(array &$form) {
-    $form['#markup'] = \Drupal::translation()->translate('<h2>Configure Acquia Purger and ASU Governance</h2>');
+    $form['#markup'] = \Drupal::translation()->translate('<h2>Acquia Purger and ASU Governance defaults</h2>');
 
     $form['description'] = [
       '#type' => 'markup',
       '#markup' => \Drupal::translation()->translate(
-        '<p>This task will install and configure the Acquia Purger and ASU Governance modules for your site.</p>
-         <p class="small text-muted">The Acquia Purge module will enable the purging of external Varnish caches when your site content is updated.</p>
+        '<p>This task will install and configure default values for the Acquia Purger and ASU Governance modules.</p>
+         <p class="small text-muted">The Acquia Purge module enables the purging of external Varnish caches when your site content is updated.</p>
          <p class="small text-muted">The ASU Governance modules secure the SuperAdmin account and provide a customized interface for managing ASU Drupal sites in Acquia SiteFactory.</p>'
       ),
     ];
@@ -47,9 +47,9 @@ class AsusfConfigurePurgerForm extends ConfigFormBase {
    * Installs and configures the Acquia Purger.
    */
   public static function submitPurgerConfiguration() {
-    // Include the purge setup logic from install file.
-    include_once DRUPAL_ROOT . '/profiles/webspark/webspark/webspark.install';
-    __webspark_setup_purge();
+    // Include the purge setup logic from governance install file.
+    include_once DRUPAL_ROOT . '/modules/contrib/asu_governance/asu_governance.install';
+    __asu_governance_setup_purge();
 
     // Install the ASU Governance modules.
     \Drupal::service('module_installer')->install(['asu_governance']);

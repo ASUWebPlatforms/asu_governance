@@ -3,14 +3,14 @@
 namespace Drupal\asu_secure_superadmin\Services;
 
 use Drupal\Component\EventDispatcher\ContainerAwareEventDispatcher;
-use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
-use Drupal\Component\Plugin\Exception\PluginNotFoundException;
-use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\user\Entity\User;
-use Drupal\user\Event\AccountCancelEvent;
 use Drupal\Core\Password\DefaultPasswordGenerator;
+use Drupal\Core\Extension\ModuleHandlerInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Extension\ModuleExtensionList;
+use Drupal\Core\Extension\ModuleInstallerInterface;
 
 /**
  * Change the SuperAdmin (uid 1) to a new user.
@@ -46,6 +46,34 @@ class ChangeSuperAdminService {
   protected $messenger;
 
   /**
+   * The module handler.
+   *
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface
+   */
+  protected $moduleHandler;
+
+  /**
+   * The config factory.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $configFactory;
+
+  /**
+   * The module list.
+   *
+   * @var \Drupal\Core\Extension\ModuleExtensionList
+   */
+  protected $moduleList;
+
+  /**
+   * The module installer service.
+   *
+   * @var \Drupal\Core\Extension\ModuleInstallerInterface
+   */
+  protected $moduleInstaller;
+
+  /**
    * An array of ASU Enterprise Technology admins.
    *
    * @var string[]
@@ -69,7 +97,6 @@ class ChangeSuperAdminService {
     'stwilli2',
     'ddoozan',
     'kdmarks',
-    'mmilner6',
     'mjenki10',
     'ikrondo',
   ];
@@ -77,11 +104,24 @@ class ChangeSuperAdminService {
   /**
    * Constructs a new ChangeSuperAdminService object.
    */
-  public function __construct(EntityTypeManagerInterface $entityTypeManager, ContainerAwareEventDispatcher $eventDispatcher, DefaultPasswordGenerator $passwordGenerator, MessengerInterface $messenger) {
+  public function __construct(
+    EntityTypeManagerInterface $entityTypeManager,
+    ContainerAwareEventDispatcher $eventDispatcher,
+    DefaultPasswordGenerator $passwordGenerator,
+    MessengerInterface $messenger,
+    ModuleHandlerInterface $moduleHandler,
+    ConfigFactoryInterface $configFactory,
+    ModuleExtensionList $moduleList,
+    ModuleInstallerInterface $moduleInstaller,
+  ) {
     $this->entityTypeManager = $entityTypeManager;
     $this->eventDispatcher = $eventDispatcher;
     $this->passwordGenerator = $passwordGenerator;
     $this->messenger = $messenger;
+    $this->moduleHandler = $moduleHandler;
+    $this->configFactory = $configFactory;
+    $this->moduleList = $moduleList;
+    $this->moduleInstaller = $moduleInstaller;
   }
 
   /**
@@ -93,7 +133,7 @@ class ChangeSuperAdminService {
     /** @var \Drupal\user\Entity\User $user1 */
     $user1 = User::load(1);
     $original_name = $user1->get('name')->value;
-    $original_from_config = \Drupal::configFactory()->get('asu_secure_superadmin.settings')
+    $original_from_config = $this->configFactory->get('asu_secure_superadmin.settings')
       ->get('original_superadmin');
 
     if ($original_name === 'etsuper' && isset($original_from_config)) {
@@ -101,13 +141,12 @@ class ChangeSuperAdminService {
       return;
     }
 
-    $module_list = \Drupal::service('extension.list.module');
-    $casEnabled = \Drupal::moduleHandler()->moduleExists('cas');
-    $casInCode = $module_list->getPath('cas') !== NULL;
+    $casEnabled = $this->moduleHandler->moduleExists('cas');
+    $casInCode = $this->moduleList->getPath('cas') !== NULL;
     $casUserManager = $casEnabled ? \Drupal::service('cas.user_manager') : NULL;
     if (!$casEnabled && $casInCode) {
-      // install the CAS module if it exists.
-      \Drupal::service('module_installer')->install(['cas']);
+      // Install the CAS module if it exists.
+      $this->moduleInstaller->install(['cas']);
       $casUserManager = \Drupal::service('cas.user_manager');
     }
 
@@ -162,14 +201,16 @@ class ChangeSuperAdminService {
   /**
    * Adjust for new spinups on Acquia Stacks.
    *
-   * @param $user1
+   * @param \Drupal\user\Entity\User $user1
+   *   User entity for uid 1.
    * @param \Drupal\cas\Service\CasUserManager $casUserManager
-   * @return void
-   * @throws InvalidPluginDefinitionException
-   * @throws PluginNotFoundException
-   * @throws EntityStorageException
+   *   The CAS user manager service.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
-  public function adjustForAcquiaStackNewSpinups($user1, \Drupal\cas\Service\CasUserManager $casUserManager) :void {
+  public function adjustForAcquiaStackNewSpinups(User $user1, CasUserManager $casUserManager) :void {
     // Rename user1 to 'etsuper' and set the email.
     $user1->set('name', 'etsuper');
     $user1->set('mail', 'DL.WG.ET.WebPlatforms@exchange.asu.edu');
@@ -185,7 +226,7 @@ class ChangeSuperAdminService {
     $user1->save();
 
     // Find the site spinup-associated Admin user.
-    $query = \Drupal::entityQuery('user')
+    $query = $this->entityTypeManager->getStorage('user')->getQuery()
       ->accessCheck(FALSE)
       ->condition('name', '@asu.edu', 'ENDS_WITH');
     $uids = $query->execute();
@@ -196,6 +237,9 @@ class ChangeSuperAdminService {
         if ($adminUser instanceof User) {
           $resetUsername = str_replace('@asu.edu', '', $adminUser->getAccountName());
           $adminUser->set('name', $resetUsername);
+          if (in_array($resetUsername, self::ETADMINS)) {
+            $adminUser->addRole('administrator');
+          }
           $adminUser->save();
         }
         // Allow admin user to log in via CAS.
@@ -218,4 +262,5 @@ class ChangeSuperAdminService {
       }
     }
   }
+
 }

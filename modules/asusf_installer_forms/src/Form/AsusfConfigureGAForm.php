@@ -31,11 +31,11 @@ class AsusfConfigureGAForm extends ConfigFormBase {
    *   The form array to modify.
    */
   public static function buildAnalyticsFields(array &$form) {
-    $form['#markup'] = \Drupal::translation()->translate('<h2>Configure Google Analytics</h2>');
+    $form['#markup'] = \Drupal::translation()->translate('<h2>Google Analytics</h2>');
 
     $form['has_ga_account'] = [
       '#type' => 'checkbox',
-      '#title' => \Drupal::translation()->translate('Do you have a Google Analytics account separate from the main ASU account?'),
+      '#title' => \Drupal::translation()->translate('Connect a Google Analytics account separate from the main ASU account.'),
     ];
 
     $form['google_analytics_account'] = [

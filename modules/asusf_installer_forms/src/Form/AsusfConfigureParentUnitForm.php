@@ -6,9 +6,9 @@ use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 
 /**
- * Provides the Header configuration form.
+ * Provides the parent unit configuration form.
  */
-class AsusfConfigureHeaderForm extends ConfigFormBase {
+class AsusfConfigureParentUnitForm extends ConfigFormBase {
 
   /**
    * {@inheritdoc}
@@ -21,17 +21,17 @@ class AsusfConfigureHeaderForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function getFormId() {
-    return 'asusf_install_configure_header_form';
+    return 'asusf_install_configure_parent_unit_form';
   }
 
   /**
-   * Builds just the header-related form fields.
+   * Builds just the parent unit related form fields.
    *
    * @param array &$form
    *   The form structure to modify.
    */
   public static function buildParentUnitFields(array &$form) {
-    $form['#markup'] = \Drupal::translation()->translate('<h2>Configure Parent Unit</h2>');
+    $form['#markup'] = \Drupal::translation()->translate('<h2>Parent unit information</h2>');
 
     $form['explanation'] = [
       '#markup' => '<h3>Add parent unit</h3><p>If this site is for a department/college/unit ' .
@@ -44,7 +44,7 @@ class AsusfConfigureHeaderForm extends ConfigFormBase {
 
     $form['parent_unit_name'] = [
       '#type' => 'textfield',
-      '#title' => \Drupal::translation()->translate('Parent unit name'),
+      '#title' => \Drupal::translation()->translate('Parent unit name (optional)'),
       '#maxlength' => 50,
       '#size' => 50,
       '#default_value' => '',

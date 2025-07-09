@@ -27,7 +27,7 @@ class AsusfConfigureSitemapXMLForm extends ConfigFormBase {
 
   public static function buildBaseUrlFields(array &$form) {
 
-    $form['#markup'] = \Drupal::translation()->translate('<h2>Configure Base URL</h2>');
+    $form['#markup'] = \Drupal::translation()->translate('<h2>Base URL</h2>');
 
     $form['simplexml_base_url'] = [
       '#maxlength' => 64,

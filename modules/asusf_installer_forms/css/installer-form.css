@@ -1,3 +1,10 @@
-.uds-form input.btn {
+.multi-step-ajax-form.uds-form.block.block--multi-step-form-instance input.btn {
   padding-left: 2rem !important;
+}
+
+.multi-step-ajax-form.uds-form.block.block--multi-step-form-instance,
+#block-multi-step-form-instance {
+  width: 70%;
+  max-width: 1200px;
+  margin: 4rem auto 0;
 }
