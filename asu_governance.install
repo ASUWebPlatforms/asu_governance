@@ -26,7 +26,7 @@ function asu_governance_install() {
     \Drupal::service('asu_secure_superadmin.change_super_admin_service')
       ->changeSuperAdmin();
     \Drupal::messenger()
-      ->addMessage('The superadmin account has been secured.');
+      ->addMessage('The SuperAdmin account has been secured. Please log in again.');
   }
   catch (Exception $e) {
     \Drupal::logger('asu_secure_superadmin')->error($e->getMessage());
@@ -103,6 +103,66 @@ function asu_governance_install() {
 
   // Clear caches to ensure all changes are reflected.
   drupal_flush_all_caches();
+
+  // Check if the Purge module is in code.
+  $module_list = \Drupal::service('extension.list.module');
+  $purgeInCode = $module_list->getPath('purge') !== NULL;
+
+  // Set up purge if in code and not yet enabled.
+  if ($purgeInCode && !\Drupal::moduleHandler()->moduleExists('purge')) {
+    try {
+      __asu_governance_setup_purge();
+    } catch (Exception $e) {
+      \Drupal::logger('asu_governance')->error('Error setting up Purge: @message', ['@message' => $e->getMessage()]);
+      \Drupal::messenger()->addError(t('Error setting up Purge. See logs for details.'));
+    }
+  }
+}
+
+function __asu_governance_setup_purge() {
+  // Enable the purge modules.
+  $module_installer = \Drupal::service("module_installer");
+  $module_list = [
+    "purge",
+    "purge_ui",
+    "purge_drush",
+    "purge_queuer_coretags",
+    "purge_processor_cron",
+    "purge_processor_lateruntime",
+    "acquia_purge",
+  ];
+  foreach ($module_list as $module) {
+    if (!\Drupal::moduleHandler()->moduleExists($module)) {
+      $module_installer->install([$module]);
+    }
+  }
+
+  // Clear caches to allow Drupal to find the purgers.
+  drupal_flush_all_caches();
+
+  // Set the cache max age to 1 day.
+  \Drupal::service('config.factory')->getEditable('system.performance')
+    ->set('cache.page.max_age', '86400')
+    ->save();
+
+  try {
+    // Get the Purge purger service.
+    $purge_purgers = \Drupal::service('purge.purgers');
+
+    $plugin_id = 'acquia_purge';
+    $enabled = $purge_purgers->getPluginsEnabled();
+
+    // Don't add if it's already there.
+    if (!in_array($plugin_id, $enabled)) {
+      // Ensure plugin is available.
+      if (in_array($plugin_id, $purge_purgers->getPluginsAvailable())) {
+        $enabled[$purge_purgers->createId()] = $plugin_id;
+        $purge_purgers->setPluginsEnabled($enabled);
+      }
+    }
+  } catch (\Exception $e) {
+    \Drupal::logger('asu_governance')->error('Error enabling Acquia Purge plugin: @message', ['@message' => $e->getMessage()]);
+  }
 }
 
 /**

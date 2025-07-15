@@ -63,8 +63,6 @@ final class GovernanceSettingsForm extends ConfigFormBase {
    * @var string[]
    */
   public const DISALLOWED_THEMES = [
-    'bartik',
-    'stark',
     'classy',
     'stable',
   ];
