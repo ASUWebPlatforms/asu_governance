@@ -31,48 +31,93 @@ class MultiStepAjaxForm extends FormBase {
       ],
     ];
 
-    switch ($step) {
-      case 1:
-        $form['steps']['step_1'] = ['#type' => 'container'];
-        AsusfConfigureSiteInfoForm::buildSiteInfoFields($form['steps']['step_1']);
-        break;
-      case 2:
-        $form['steps']['step_2'] = ['#type' => 'container'];
-        AsusfConfigureSitemapXMLForm::buildBaseUrlFields($form['steps']['step_2']);
-        break;
-      case 3:
-        $form['steps']['step_3'] = ['#type' => 'container'];
-        AsusfConfigureParentUnitForm::buildParentUnitFields($form['steps']['step_3']);
-        break;
-      case 4:
-        $form['steps']['step_4'] = ['#type' => 'container'];
-        AsusfConfigureGAForm::buildAnalyticsFields($form['steps']['step_4']);
-        break;
-      case 5:
-        $form['steps']['step_5'] = ['#type' => 'container'];
-        AsusfConfigurePurgerForm::buildPurgerConfigFields($form['steps']['step_5']);
-        break;
+    // get active profile
+    $active_profile = \Drupal::installProfile();
+    if ($active_profile === 'webspark'){
+      switch ($step) {
+        case 1:
+          $form['steps']['site_info'] = ['#type' => 'container'];
+          AsusfConfigureSiteInfoForm::buildSiteInfoFields($form['steps']['site_info']);
+          break;
+        case 2:
+          $form['steps']['base_url'] = ['#type' => 'container'];
+          AsusfConfigureSitemapXMLForm::buildBaseUrlFields($form['steps']['base_url']);
+          break;
+        case 3:
+          $form['steps']['parent_unit'] = ['#type' => 'container'];
+          AsusfConfigureParentUnitForm::buildParentUnitFields($form['steps']['parent_unit']);
+          break;
+        case 4:
+          $form['steps']['analytics'] = ['#type' => 'container'];
+          AsusfConfigureGAForm::buildAnalyticsFields($form['steps']['analytics']);
+          break;
+        case 5:
+          $form['steps']['purge'] = ['#type' => 'container'];
+          AsusfConfigurePurgerForm::buildPurgerConfigFields($form['steps']['purge']);
+          break;
+      }
+
+      $form['steps']['actions'] = [
+        '#type' => 'actions',
+      ];
+
+      if ($step < 5) { // Adjust for total steps
+        $form['steps']['actions']['next'] = [
+          '#type' => 'submit',
+          '#value' => $this->t('Next'),
+          '#submit' => ['::goToNextStep'],
+          '#ajax' => [
+            'callback' => '::ajaxCallback',
+            'wrapper' => 'ajax-form-wrapper',
+          ],
+        ];
+      } else {
+        $form['steps']['actions']['submit'] = [
+          '#type' => 'submit',
+          '#value' => $this->t('Submit'),
+        ];
+      }
     }
+    else {
+      switch ($step) {
+        case 1:
+          $form['steps']['site_info'] = ['#type' => 'container'];
+          AsusfConfigureSiteInfoForm::buildSiteInfoFields($form['steps']['site_info']);
+          break;
+        case 2:
+          $form['steps']['base_url'] = ['#type' => 'container'];
+          AsusfConfigureSitemapXMLForm::buildBaseUrlFields($form['steps']['base_url']);
+          break;
+        case 3:
+          $form['steps']['analytics'] = ['#type' => 'container'];
+          AsusfConfigureGAForm::buildAnalyticsFields($form['steps']['analytics']);
+          break;
+        case 4:
+          $form['steps']['purge'] = ['#type' => 'container'];
+          AsusfConfigurePurgerForm::buildPurgerConfigFields($form['steps']['purge']);
+          break;
+      }
 
-    $form['steps']['actions'] = [
-      '#type' => 'actions',
-    ];
+      $form['steps']['actions'] = [
+        '#type' => 'actions',
+      ];
 
-    if ($step < 5) { // Adjust for total steps
-      $form['steps']['actions']['next'] = [
-        '#type' => 'submit',
-        '#value' => $this->t('Next'),
-        '#submit' => ['::goToNextStep'],
-        '#ajax' => [
-          'callback' => '::ajaxCallback',
-          'wrapper' => 'ajax-form-wrapper',
-        ],
-      ];
-    } else {
-      $form['steps']['actions']['submit'] = [
-        '#type' => 'submit',
-        '#value' => $this->t('Submit'),
-      ];
+      if ($step < 4) { // Adjust for total steps
+        $form['steps']['actions']['next'] = [
+          '#type' => 'submit',
+          '#value' => $this->t('Next'),
+          '#submit' => ['::goToNextStep'],
+          '#ajax' => [
+            'callback' => '::ajaxCallback',
+            'wrapper' => 'ajax-form-wrapper',
+          ],
+        ];
+      } else {
+        $form['steps']['actions']['submit'] = [
+          '#type' => 'submit',
+          '#value' => $this->t('Submit'),
+        ];
+      }
     }
 
     return $form;
@@ -86,41 +131,74 @@ class MultiStepAjaxForm extends FormBase {
   }
 
   public function goToNextStep(array &$form, FormStateInterface $form_state) {
-    switch ($form_state->get('step')) {
-      case 1:
-        if (!$form_state->hasAnyErrors()) {
-          AsusfConfigureSiteInfoForm::submitSiteInfo($form_state);
-          $form_state->set('step', $form_state->get('step') + 1);
-          $form_state->setRebuild();
-        }
-        break;
-      case 2:
-        AsusfConfigureSitemapXMLForm::validateBaseUrl($form['steps']['step_2'], $form_state);
-        if (!$form_state->hasAnyErrors()) {
-          $config_factory = \Drupal::configFactory();
-          $config_factory->getEditable('simple_sitemap.settings')
-            ->set('base_url', $form_state->getValue('simplexml_base_url'))
-            ->save();
-          \Drupal::service('simple_sitemap.generator')->generate('cron');
-          $form_state->set('step', $form_state->get('step') + 1);
-          $form_state->setRebuild();
-        }
-        break;
-      case 3:
-        if (!$form_state->hasAnyErrors()) {
-          AsusfConfigureParentUnitForm::submitParentUnit($form_state);
-          $form_state->set('step', $form_state->get('step') + 1);
-          $form_state->setRebuild();
-        }
-
-        break;
-      case 4:
-        if (!$form_state->hasAnyErrors()) {
-          AsusfConfigureGAForm::submitAnalyticsSettings($form_state);
-          $form_state->set('step', $form_state->get('step') + 1);
-          $form_state->setRebuild();
-        }
-        break;
+    // get active profile
+    $active_profile = \Drupal::installProfile();
+    if ($active_profile === 'webspark') {
+      switch ($form_state->get('step')) {
+        case 1:
+          if (!$form_state->hasAnyErrors()) {
+            AsusfConfigureSiteInfoForm::submitSiteInfo($form_state);
+            $form_state->set('step', $form_state->get('step') + 1);
+            $form_state->setRebuild();
+          }
+          break;
+        case 2:
+          AsusfConfigureSitemapXMLForm::validateBaseUrl($form['steps']['base_url'], $form_state);
+          if (!$form_state->hasAnyErrors()) {
+            $config_factory = \Drupal::configFactory();
+            $config_factory->getEditable('simple_sitemap.settings')
+              ->set('base_url', $form_state->getValue('simplexml_base_url'))
+              ->save();
+            \Drupal::service('simple_sitemap.generator')->generate('cron');
+            $form_state->set('step', $form_state->get('step') + 1);
+            $form_state->setRebuild();
+          }
+          break;
+        case 3:
+          if (!$form_state->hasAnyErrors()) {
+            AsusfConfigureParentUnitForm::submitParentUnit($form_state);
+            $form_state->set('step', $form_state->get('step') + 1);
+            $form_state->setRebuild();
+          }
+          break;
+        case 4:
+          if (!$form_state->hasAnyErrors()) {
+            AsusfConfigureGAForm::submitAnalyticsSettings($form_state);
+            $form_state->set('step', $form_state->get('step') + 1);
+            $form_state->setRebuild();
+          }
+          break;
+      }
+    }
+    else {
+      switch ($form_state->get('step')) {
+        case 1:
+          if (!$form_state->hasAnyErrors()) {
+            AsusfConfigureSiteInfoForm::submitSiteInfo($form_state);
+            $form_state->set('step', $form_state->get('step') + 1);
+            $form_state->setRebuild();
+          }
+          break;
+        case 2:
+          AsusfConfigureSitemapXMLForm::validateBaseUrl($form['steps']['base_url'], $form_state);
+          if (!$form_state->hasAnyErrors()) {
+            $config_factory = \Drupal::configFactory();
+            $config_factory->getEditable('simple_sitemap.settings')
+              ->set('base_url', $form_state->getValue('simplexml_base_url'))
+              ->save();
+            \Drupal::service('simple_sitemap.generator')->generate('cron');
+            $form_state->set('step', $form_state->get('step') + 1);
+            $form_state->setRebuild();
+          }
+          break;
+        case 3:
+          if (!$form_state->hasAnyErrors()) {
+            AsusfConfigureGAForm::submitAnalyticsSettings($form_state);
+            $form_state->set('step', $form_state->get('step') + 1);
+            $form_state->setRebuild();
+          }
+          break;
+      }
     }
   }
 
