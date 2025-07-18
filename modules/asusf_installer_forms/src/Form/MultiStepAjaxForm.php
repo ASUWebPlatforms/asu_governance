@@ -79,9 +79,6 @@ class MultiStepAjaxForm extends FormBase {
   }
 
   public function ajaxCallback(array &$form, FormStateInterface $form_state) {
-    \Drupal::logger('multi_step')->debug('Form serialized size: @size bytes', [
-      '@size' => strlen(serialize($form)),
-    ]);
     return $form;
   }
 
