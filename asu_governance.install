@@ -26,7 +26,7 @@ function asu_governance_install() {
     \Drupal::service('asu_secure_superadmin.change_super_admin_service')
       ->changeSuperAdmin();
     \Drupal::messenger()
-      ->addMessage('The SuperAdmin account has been secured. Please log in again.');
+      ->addMessage('The SuperAdmin account has been secured. If you have been logged out, please log in again.');
   }
   catch (Exception $e) {
     \Drupal::logger('asu_secure_superadmin')->error($e->getMessage());

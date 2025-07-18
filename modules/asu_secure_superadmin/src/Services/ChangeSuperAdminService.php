@@ -2,6 +2,7 @@
 
 namespace Drupal\asu_secure_superadmin\Services;
 
+use Drupal\cas\Service\CasUserManager;
 use Drupal\Component\EventDispatcher\ContainerAwareEventDispatcher;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Messenger\MessengerInterface;
@@ -74,6 +75,13 @@ class ChangeSuperAdminService {
   protected $moduleInstaller;
 
   /**
+   * The CAS user manager service.
+   *
+   * @var \Drupal\cas\Service\CasUserManager
+   */
+  protected $casUserManager;
+
+  /**
    * An array of ASU Enterprise Technology admins.
    *
    * @var string[]
@@ -113,6 +121,7 @@ class ChangeSuperAdminService {
     ConfigFactoryInterface $configFactory,
     ModuleExtensionList $moduleList,
     ModuleInstallerInterface $moduleInstaller,
+    CasUserManager $casUserManager,
   ) {
     $this->entityTypeManager = $entityTypeManager;
     $this->eventDispatcher = $eventDispatcher;
@@ -122,6 +131,7 @@ class ChangeSuperAdminService {
     $this->configFactory = $configFactory;
     $this->moduleList = $moduleList;
     $this->moduleInstaller = $moduleInstaller;
+    $this->casUserManager = $casUserManager;
   }
 
   /**
@@ -141,18 +151,9 @@ class ChangeSuperAdminService {
       return;
     }
 
-    $casEnabled = $this->moduleHandler->moduleExists('cas');
-    $casInCode = $this->moduleList->getPath('cas') !== NULL;
-    $casUserManager = $casEnabled ? \Drupal::service('cas.user_manager') : NULL;
-    if (!$casEnabled && $casInCode) {
-      // Install the CAS module if it exists.
-      $this->moduleInstaller->install(['cas']);
-      $casUserManager = \Drupal::service('cas.user_manager');
-    }
-
     // Check if this is a new Acquia Stack spinup.
     if ($original_name === 'Site Factory admin') {
-      $this->adjustForAcquiaStackNewSpinups($user1, $casUserManager);
+      $this->adjustForAcquiaStackNewSpinups($user1, $this->casUserManager);
       return;
     }
 
@@ -171,17 +172,15 @@ class ChangeSuperAdminService {
     $newPassword = $this->passwordGenerator->generate(15);
     $user1->set('pass', $newPassword);
 
-    if ($casUserManager) {
-      // Get the CAS username.
-      $casUsername = $casUserManager->getCasUsernameForAccount($user1->id());
-      // Remove the old CAS username mapping.
-      $casUserManager->removeCasUsernameForAccount($user1);
-      $user1->save();
-      $newUser->save();
-      // Allow new user to log in via CAS.
-      if ($casUsername) {
-        $casUserManager->setCasUsernameForAccount($newUser, $casUsername);
-      }
+    // Get the CAS username.
+    $casUsername = $this->casUserManager->getCasUsernameForAccount($user1->id());
+    // Remove the old CAS username mapping.
+    $this->casUserManager->removeCasUsernameForAccount($user1);
+    $user1->save();
+    $newUser->save();
+    // Allow new user to log in via CAS.
+    if ($casUsername) {
+      $this->casUserManager->setCasUsernameForAccount($newUser, $casUsername);
     }
     // Reload the newUser object to get the new uid.
     $newUserReloaded = user_load_by_name($original_name);
