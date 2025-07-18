@@ -1,0 +1,6 @@
+services:
+  asusf_installer_forms.event_subscriber:
+    class: Drupal\asusf_installer_forms\EventSubscriber\AsusfInstallerFormsSubscriber
+    arguments: ['@entity_type.manager']
+    tags:
+      - { name: event_subscriber }
