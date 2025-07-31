@@ -8,3 +8,20 @@
   max-width: 1200px;
   margin: 4rem auto 0;
 }
+
+.asudrupal .border {
+  border: 1px solid #dee2e6 !important;
+}
+
+.asudrupal .py-4 {
+  padding-bottom: 2rem !important;
+}
+.asudrupal .px-3 {
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+}
+
+.asudrupal .my-4 {
+  margin-bottom: 2rem !important;
+  margin-top: 2rem !important;
+}

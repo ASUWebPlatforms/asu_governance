@@ -1,0 +1,74 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for asusf_installer_forms module.
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Implements hook_form_alter().
+ */
+function asusf_installer_forms_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // get the active configuration.
+  $config = \Drupal::configFactory()->getEditable('asusf_installer_forms.settings');
+  if (!$config->get('installer_forms_completed')) {
+    $initially_disallowed_forms = [
+      'user_admin_permissions',
+      'views_form_user_admin_people_page_1',
+      'user_admin_settings',
+      'system_modules',
+      'system_themes_admin_form',
+      'user_admin_roles_form',
+      'role_settings',
+      'views_form_content_page_1',
+      'views_form_media_media_page_list',
+      'media_type_add_form',
+      'block_content_type_add_form',
+      'block_admin_display_form',
+      'node_type_add_form',
+      'system_theme_settings',
+      'system_themes_admin_form',
+      'update_manager_update_form',
+      'system_modules_uninstall',
+      'cas_settings',
+      'config_admin_import_form',
+      'config_import_form',
+      'config_single_import_form',
+      'config_export_form',
+      'config_single_export_form',
+      'user_register_form',
+      'bulk_add_cas_users',
+      'update_manager_update_form',
+      'update_settings',
+      'view_add_form',
+      'view_edit_form',
+      'taxonomy_vocabulary_form',
+      'paragraphs_type_add_form',
+    ];
+    $initially_disallowed_form_ids = [
+      'views-exposed-form-authmap-page'
+    ];
+    if (in_array($form_id, $initially_disallowed_forms) || in_array($form['#id'], $initially_disallowed_form_ids)) {
+      $form['#access'] = FALSE;
+    }
+  }
+}
+
+/**
+ * Implements hook_preprocess_page().
+ */
+function asusf_installer_forms_preprocess_page(&$variables) {
+  // get the active configuration.
+  $config = \Drupal::configFactory()->getEditable('asusf_installer_forms.settings');
+  if (!$config->get('installer_forms_completed')) {
+    $paths = [
+      '/admin/appearance',
+      '/admin/appearance/update',
+    ];
+    if (in_array(\Drupal::service('path.current')->getPath(), $paths, TRUE)) {
+      $variables['page']['content']['#access'] = FALSE;
+    }
+  }
+}

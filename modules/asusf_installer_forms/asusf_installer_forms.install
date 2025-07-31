@@ -21,13 +21,16 @@ function asusf_installer_forms_install() {
   if (!$config->get('installer_forms_completed')) {
     // Place the custom block in a region.
     $theme = \Drupal::theme()->getActiveTheme()->getName();
+    $profile = \Drupal::installProfile();
+    $region = $profile === 'webspark' ? 'header' : ($profile === 'asudrupal' ? 'hero' : 'content');
+    $weight = $profile === 'webspark' ? 10 : -1;
     $block = Block::create([
       'id' => 'multi_step_form_instance',
       'plugin' => 'site_config_multi_step_form_block',
-      'region' => 'header',
+      'region' => $region,
       'theme' => $theme,
       'visibility' => [],
-      'weight' => 10,
+      'weight' => $weight,
       'status' => 1,
       'label' => 'Multi-step Setup Form',
     ]);
