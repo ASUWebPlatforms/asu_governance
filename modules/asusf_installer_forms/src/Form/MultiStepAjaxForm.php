@@ -8,6 +8,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\simple_sitemap\Manager\Generator;
+use Drupal\Core\Extension\ModuleInstallerInterface;
 
 /**
  * Provides a multi-step AJAX form for initial configuration.
@@ -43,6 +44,13 @@ class MultiStepAjaxForm extends FormBase {
   protected $installProfile;
 
   /**
+   * The module installer service.
+   *
+   * @var \Drupal\Core\Extension\ModuleInstallerInterface
+   */
+  protected $moduleInstaller;
+
+  /**
    * Constructs a MultiStepAjaxForm object.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
@@ -53,12 +61,15 @@ class MultiStepAjaxForm extends FormBase {
    *   The simple sitemap generator service.
    * @param string $install_profile
    *   The active installation profile.
+   * @param \Drupal\Core\Extension\ModuleInstallerInterface $module_installer
+   *   The module installer service.
    */
-  public function __construct(ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, Generator $sitemap_generator, string $install_profile) {
+  public function __construct(ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, Generator $sitemap_generator, string $install_profile, ModuleInstallerInterface $module_installer) {
     $this->configFactory = $config_factory;
     $this->entityTypeManager = $entity_type_manager;
     $this->sitemapGenerator = $sitemap_generator;
     $this->installProfile = $install_profile;
+    $this->moduleInstaller = $module_installer;
   }
 
   /**
@@ -69,7 +80,8 @@ class MultiStepAjaxForm extends FormBase {
       $container->get('config.factory'),
       $container->get('entity_type.manager'),
       $container->get('simple_sitemap.generator'),
-      $container->getParameter('install_profile')
+      $container->getParameter('install_profile'),
+      $container->get('module_installer')
     );
   }
 
@@ -97,7 +109,7 @@ class MultiStepAjaxForm extends FormBase {
     $step = $form_state->get('step') ?? 1;
     $form_state->set('step', $step);
 
-    $form['#prefix'] = '<div id="ajax-form-wrapper">';
+    $form['#prefix'] = '<div id="ajax-form-wrapper" class="' . $this->installProfile . '">';
     $form['#suffix'] = '</div>';
     $form['#markup'] = $this->t('<h1>Initial Configuration</h1>');
     $form['steps'] = [
@@ -306,6 +318,18 @@ class MultiStepAjaxForm extends FormBase {
       if ($block) {
         $block->delete();
       }
+
+      // Enable the toolbar and admin_toolbar modules.
+      $this->moduleInstaller->install(['toolbar', 'admin_toolbar']);
+
+      // Allow authenticated users to access the toolbar.
+      $role = $this->entityTypeManager->getStorage('user_role')->load('authenticated');
+      if ($role) {
+        $role->grantPermission('access toolbar');
+        $role->save();
+      }
+      // Disable the asusf_installer_forms module.
+      $this->moduleInstaller->uninstall(['asusf_installer_forms']);
     }
   }
 
