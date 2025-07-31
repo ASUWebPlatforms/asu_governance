@@ -306,29 +306,32 @@ class MultiStepAjaxForm extends FormBase {
   public function submitForm(array &$form, FormStateInterface $form_state) {
     if (!$form_state->hasAnyErrors()) {
       AsusfConfigurePurgerForm::submitPurgerConfiguration();
-
       // Set the config to show that the installer forms have been completed.
       $this->configFactory->getEditable('asusf_installer_forms.settings')
         ->set('installer_forms_completed', TRUE)
         ->save();
-
       // Remove the custom block if it exists.
       $block_storage = $this->entityTypeManager->getStorage('block');
       $block = $block_storage->load('multi_step_form_instance');
       if ($block) {
         $block->delete();
       }
-
       // Enable the toolbar and admin_toolbar modules.
       $this->moduleInstaller->install(['toolbar', 'admin_toolbar']);
-
-      // Allow authenticated users to access the toolbar.
-      $role = $this->entityTypeManager->getStorage('user_role')->load('authenticated');
-      if ($role) {
+      // Get list of all roles.
+      $roles = $this->entityTypeManager->getStorage('user_role')->loadMultiple();
+      // Remove anonymous and authenticated roles from the roles array.
+      unset($roles['anonymous'], $roles['authenticated']);
+      // Remove the 'employee' role if it exists.
+      if (isset($roles['employee'])) {
+        unset($roles['employee']);
+      }
+      // Grant the 'access toolbar' permission to all remaining roles.
+      foreach ($roles as $role) {
         $role->grantPermission('access toolbar');
         $role->save();
       }
-      // Disable the asusf_installer_forms module.
+      // Uninstall the asusf_installer_forms module.
       $this->moduleInstaller->uninstall(['asusf_installer_forms']);
     }
   }
