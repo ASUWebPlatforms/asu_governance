@@ -31,6 +31,20 @@ allowable_modules:
   - webspark_webdir
   - captcha
   - editoria11y
+  - asset_injector
+  - siteimprove
+  - masquerade
+  - smtp
+  - metatag_verification
+  - feeds
+  - better_exposed_filters
+  - mailsystem
+  - views_data_export
+  - feeds_tamper
+  - metatag_open_graph
+  - honeypot
+  - views_bulk_operations
+  - metatag_views
 allowable_themes:
   - claro
   - radix
@@ -50,3 +64,4 @@ permissions_blacklist:
   - masquerade as super user
   - masquerade as any user
   - masquerade as administrator
+  - switch users
