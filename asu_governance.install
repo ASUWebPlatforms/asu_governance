@@ -140,3 +140,49 @@ function asu_governance_update_10000() {
   }
 
 }
+
+/**
+ * Update allowable modules and permissions.
+ */
+function asu_governance_update_10001() {
+
+  $newModules = [
+    'asset_injector',
+    'siteimprove',
+    'masquerade',
+    'smtp',
+    'metatag_verification',
+    'feeds',
+    'better_exposed_filters',
+    'mailsystem',
+    'views_data_export',
+    'feeds_tamper',
+    'metatag_open_graph',
+    'honeypot',
+    'views_bulk_operations',
+    'metatag_views',
+  ];
+
+  $newPermissions = [
+    'switch users',
+  ];
+
+  $config = \Drupal::service('config.factory')->getEditable('asu_governance.settings');
+
+  $moduleList = $config->get('allowable_modules', []);
+  foreach ($newModules as $module) {
+    if (!in_array($module, $moduleList, TRUE)) {
+      $moduleList[] = $module;
+    }
+  }
+  $config->set('allowable_modules', $moduleList);
+
+  $permissionsBlacklist = $config->get('permissions_blacklist', []);
+  if (!in_array('switch users', $permissionsBlacklist, TRUE)) {
+    $permissionsBlacklist[] = 'switch users';
+    $config->set('permissions_blacklist', $permissionsBlacklist);
+  }
+
+  $config->save();
+
+}
