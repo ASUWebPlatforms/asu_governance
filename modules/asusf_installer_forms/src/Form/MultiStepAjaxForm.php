@@ -275,9 +275,6 @@ class MultiStepAjaxForm extends FormBase {
     if (is_callable($handler)) {
       $handler($form_state);
     }
-    elseif (is_string($handler)) {
-      $handler($form_state);
-    }
   }
 
   /**
