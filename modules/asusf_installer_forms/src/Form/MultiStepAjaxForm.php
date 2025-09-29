@@ -304,7 +304,7 @@ class MultiStepAjaxForm extends FormBase {
     if (!$form_state->hasAnyErrors()) {
       AsusfConfigurePurgerForm::submitPurgerConfiguration();
       // Set the config to show that the installer forms have been completed.
-      $this->configFactory->getEditable('asusf_installer_forms.settings')
+      $this->configFactory->getEditable('asu_governance.settings')
         ->set('installer_forms_completed', TRUE)
         ->save();
       // Remove the custom block if it exists.
