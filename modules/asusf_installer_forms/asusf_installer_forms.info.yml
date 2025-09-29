@@ -4,3 +4,4 @@ description: 'Contains the subforms for each step of the installation form'
 core_version_requirement: ^10 || ^11
 dependencies:
   - drupal:cas
+  - drupal:simple_sitemap

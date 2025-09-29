@@ -15,3 +15,7 @@ See: https://www.drupal.org/node/895232 for further information.
 
 ## Configuration
 - Site Administrators will have access to the "ASU Governance settings" page located in the System submenu of the Configuration menu.
+
+## Local development
+- This module is developed using DDEV and the "DDEV Drupal Contrib" add-on.
+  - See https://github.com/ddev/ddev-drupal-contrib for instructions.
