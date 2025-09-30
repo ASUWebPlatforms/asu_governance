@@ -8,3 +8,5 @@ vendor/
 !.ddev/.env.web
 !.ddev/config.yaml
 !.ddev/config.local.yaml
+composer.lock
+
