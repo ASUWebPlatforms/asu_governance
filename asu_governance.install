@@ -253,11 +253,6 @@ function asu_governance_update_10001() {
 function asu_governance_update_10002() {
   $config_forms = \Drupal::service('config.factory')->getEditable('asusf_installer_forms.settings');
   $gov_config = \Drupal::service('config.factory')->getEditable('asu_governance.settings');
-  if ($config_forms->get('installer_forms_completed') === TRUE) {
-    $gov_config->set('installer_forms_completed', TRUE)->save();
-  }
-  else {
-    $gov_config->set('installer_forms_completed', FALSE)->save();
-  }
+  $gov_config->set('installer_forms_completed', TRUE)->save();
   $config_forms->delete();
 }
