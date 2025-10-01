@@ -1,2 +1,12 @@
 .idea/
 .DS_Store*
+web/
+.editorconfig
+.gitattributes
+vendor/
+.ddev/*
+!.ddev/.env.web
+!.ddev/config.yaml
+!.ddev/config.local.yaml
+composer.lock
+

@@ -65,3 +65,4 @@ permissions_blacklist:
   - masquerade as any user
   - masquerade as administrator
   - switch users
+installer_forms_completed: false

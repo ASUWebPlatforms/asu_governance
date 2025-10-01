@@ -12,7 +12,7 @@ use Drupal\Core\Form\FormStateInterface;
  */
 function asusf_installer_forms_form_alter(&$form, FormStateInterface $form_state, $form_id) {
   // get the active configuration.
-  $config = \Drupal::configFactory()->getEditable('asusf_installer_forms.settings');
+  $config = \Drupal::configFactory()->getEditable('asu_governance.settings');
   if (!$config->get('installer_forms_completed')) {
     $initially_disallowed_forms = [
       'user_admin_permissions',
@@ -61,7 +61,7 @@ function asusf_installer_forms_form_alter(&$form, FormStateInterface $form_state
  */
 function asusf_installer_forms_preprocess_page(&$variables) {
   // get the active configuration.
-  $config = \Drupal::configFactory()->getEditable('asusf_installer_forms.settings');
+  $config = \Drupal::configFactory()->getEditable('asu_governance.settings');
   if (!$config->get('installer_forms_completed')) {
     $paths = [
       '/admin/appearance',

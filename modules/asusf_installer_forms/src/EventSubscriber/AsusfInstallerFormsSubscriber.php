@@ -31,7 +31,7 @@ final class AsusfInstallerFormsSubscriber implements EventSubscriberInterface {
   public function onUserPreLogin(CasPreLoginEvent $event) {
     $casAccount = $event->getAccount();
     $casUsername = $event->getCasPropertyBag()->getUsername();
-    $config = \Drupal::configFactory()->getEditable('asusf_installer_forms.settings');
+    $config = \Drupal::configFactory()->getEditable('asu_governance.settings');
 
     if (!$config->get('installer_forms_completed')) {
       // Check if a user with the same username exists
