@@ -31,3 +31,18 @@ asu_governance.theme_settings_theme:
   title: 'Theme name'
   parent_id: asu_governance.theme_settings
   deriver: Drupal\system\Plugin\Derivative\ThemeLocalTask
+
+asu_governance.config.import:
+  route_name: config.import_single
+  title: 'Import'
+  base_route: config.sync
+
+asu_governance.config.import_full:
+  route_name: config.import_full
+  title: Full archive
+  parent_id: asu_governance.config.import
+
+asu_governance.config.import_single:
+  route_name: config.import_single
+  title: Single item
+  parent_id: asu_governance.config.import

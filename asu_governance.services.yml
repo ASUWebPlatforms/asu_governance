@@ -30,3 +30,9 @@ services:
     class: Drupal\asu_governance\Services\ModulePermissionHandler
     arguments: [ '@user.permissions', '@module_handler', '@config.factory', '@entity_type.manager', '@callable_resolver' ]
     Drupal\asu_governance\Services\ModulePermissionHandler: '@asu_governance.module_permission_handler'
+
+  asu_governance.config_import_full_access:
+    class: Drupal\asu_governance\Services\ConfigImportFullAccessCheck
+    tags:
+      - { name: access_check, applies_to: _custom_config_import_full }
+    Drupal\asu_governance\Services\ConfigImportFullAccessCheck: '@asu_governance.config_import_full_access'
