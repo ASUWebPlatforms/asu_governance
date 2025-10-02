@@ -43,16 +43,26 @@ final class AsuGovernanceRouteSubscriber extends RouteSubscriberBase {
 
     $permissionsRoutes = $this::PERMSROUTES;
 
+    if ($route = $collection->get('config.sync')) {
+      $route->setPath('/admin/config/development/configuration/single/import');
+    }
+
     foreach ($configRoutes as $route_name) {
       /** @var \Symfony\Component\Routing\Route $route */
       $route = $collection->get($route_name);
       if (!$route) {
         continue;
       }
+
       if ($route->getRequirement('_permission') === 'synchronize configuration' || $route->getRequirement('_permission') === 'import configuration' || $route->getRequirement('_permission') === 'export configuration') {
         $route->setRequirements([]);
-        $route->setRequirement('_allow_asu_config_access',
-          'TRUE');
+
+        if ($route_name === 'config.import_full') {
+          // Customize access for config.import_full route.
+          $route->setRequirement('_custom_config_import_full', 'TRUE');
+        }
+        // Allow access to other config routes based on custom permission check.
+        $route->setRequirement('_allow_asu_config_access', 'TRUE');
       }
     }
     foreach ($permissionsRoutes as $routeName) {
