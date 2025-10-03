@@ -4,13 +4,18 @@ asu_governance.settings:
   route_name: asu_governance.settings
 
 asu_governance.modules_list:
-  title: ASU Modules
+  title: 'ASU Modules'
   parent: system.admin
   route_name: asu_governance.modules_list
   weight: 0
 
 asu_governance.themes_page:
-  title: ASU Themes
+  title: 'ASU Themes'
   parent: system.admin
   route_name: asu_governance.themes_page
   weight: -1
+
+asu_governance.config_overview_page:
+  title: 'Configuration management'
+  route_name: config.import_single
+  parent: system.admin_config_development

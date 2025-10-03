@@ -2,6 +2,9 @@
 
 namespace Drupal\asu_governance\Services;
 
+/**
+ * Provide a trait for constants.
+ */
 trait ConstantsTrait {
 
   /**
@@ -635,4 +638,3 @@ trait ConstantsTrait {
   ];
 
 }
-
