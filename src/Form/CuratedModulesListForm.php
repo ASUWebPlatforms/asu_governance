@@ -4,7 +4,6 @@ namespace Drupal\asu_governance\Form;
 
 use Drupal\asu_governance\Services\ModulePermissionHandler;
 use Drupal\Core\Access\AccessManagerInterface;
-use Drupal\Core\Discovery\YamlDiscovery;
 use Drupal\Core\Extension\InfoParserException;
 use Drupal\Core\Extension\ModuleExtensionList;
 use Drupal\Core\Extension\ModuleHandlerInterface;

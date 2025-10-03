@@ -78,7 +78,7 @@ class ModulePermissionHandler {
   }
 
   /**
-   *  Create a role.
+   * Create a role.
    */
   public function createRole($role_id, $role_name) {
     $role_storage = $this->entityTypeManager->getStorage('user_role');
@@ -91,7 +91,7 @@ class ModulePermissionHandler {
     // Create the role if it does not exist.
     $role = $role_storage->create([
       'id' => $role_id,
-      'label' => $this->t($role_name),
+      'label' => $role_name,
     ]);
     $role->save();
   }
@@ -115,7 +115,8 @@ class ModulePermissionHandler {
     $allPermissions = $this->permissionHandler->getPermissions();
     if (defined("static::{$base_perms_const}")) {
       $basePermissions = $this::{$base_perms_const};
-    } else {
+    }
+    else {
       throw new \InvalidArgumentException("The constant {$base_perms_const} is not defined.");
     }
     // Remove missing permissions from base list.
@@ -135,13 +136,12 @@ class ModulePermissionHandler {
     $role->save();
   }
 
-
   /**
    * Add the Site Builder role's module permissions.
    *
    * @param array $modules
    *   An array of module names.
-   * @param ?string $source
+   * @param string $source
    *   The source of the function call.
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
