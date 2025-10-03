@@ -39,10 +39,10 @@ asu_governance.config.import:
 
 asu_governance.config.import_full:
   route_name: config.import_full
-  title: Full archive
+  title: 'Full archive'
   parent_id: asu_governance.config.import
 
 asu_governance.config.import_single:
   route_name: config.import_single
-  title: Single item
+  title: 'Single item'
   parent_id: asu_governance.config.import
