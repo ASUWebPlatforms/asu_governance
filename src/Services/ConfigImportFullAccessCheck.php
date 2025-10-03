@@ -2,6 +2,7 @@
 
 namespace Drupal\asu_governance\Services;
 
+use Symfony\Component\Routing\Route;
 use Drupal\Core\Access\AccessCheckInterface;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Routing\RouteMatchInterface;
@@ -15,7 +16,7 @@ class ConfigImportFullAccessCheck implements AccessCheckInterface {
   /**
    * {@inheritdoc}
    */
-  public function applies(\Symfony\Component\Routing\Route $route): bool {
+  public function applies(Route $route): bool {
     // Only apply to config.import_full.
     return $route->getDefault('_route') === 'config.import_full';
   }

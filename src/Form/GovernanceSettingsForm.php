@@ -11,7 +11,6 @@ use Drupal\Core\Extension\ThemeHandlerInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\Core\Extension\ExtensionDiscovery;
 use Drupal\Core\Database\Connection;
 
 /**
