@@ -17,5 +17,11 @@ See: https://www.drupal.org/node/895232 for further information.
 - Site Administrators will have access to the "ASU Governance settings" page located in the System submenu of the Configuration menu.
 
 ## Local development
-- This module is developed using DDEV and the "DDEV Drupal Contrib" add-on.
-  - See https://github.com/ddev/ddev-drupal-contrib for instructions.
+- Clone the repository to your local machine with git.
+- Navigate to the repository's root directory and run `ddev setup-local`.
+- After a browser window opens, navigate to the homepage and fill out the site installation form. This will enable and configure the asu_governance module correctly.
+- Create an administrator user with `ddev add-admin <username>`.
+- Log in as the administrator user you just created: `ddev drush uli <username>`.
+- Now you can proceed with development and testing etc.
+- This development environment is created using DDEV and the "DDEV Drupal Contrib" add-on.
+  - See https://github.com/ddev/ddev-drupal-contrib for the full instructions about how to use this add-on.

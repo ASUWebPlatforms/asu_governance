@@ -1,0 +1,63 @@
+#!/bin/bash
+##
+## Usage: add-admin
+## Description: Add site admin on local dev environment for asu_governance development and testing.
+## Example: `ddev add-admin sparky01`
+##
+
+set -eu -o pipefail
+
+# Define color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+function show_help() {
+  sed -n 's/^##//p' ${0}
+}
+
+while :; do
+  case ${1:-} in
+  -h | -\? | --help)
+    show_help
+    exit
+    ;;
+  --) # End of all options.
+    shift
+    break
+    ;;
+  -?*)
+    printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+    ;;
+  *) # Default case: No more options, so break out of the loop.
+    break ;;
+  esac
+
+  shift
+done
+
+
+function addadmin() {
+  if [ "${DDEV_PROJECT_STATUS}" != "running" ]; then
+      echo "Project ${DDEV_PROJECT} is not running, starting it"
+      ddev start
+      start_exit_code=$?
+      if [ $start_exit_code -ne 0 ]; then
+        exit $start_exit_code
+      fi
+  fi
+  if [ $# -ne 1 ]; then
+    echo -e "${RED}[error]${NC} Please provide exactly one username as an argument."
+    echo -e "${YELLOW}Usage: ddev add-admin sparky01${NC}"
+    exit 1
+  fi
+  if ddev drush user:information "$1" &>/dev/null; then
+    echo -e "${RED}[error]${NC} User '$1' already exists."
+    exit 1
+  fi
+  ddev drush ucrt "$1";
+  ddev drush urol administrator "$1";
+}
+
+addadmin "$@"
