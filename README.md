@@ -18,4 +18,16 @@ See: https://www.drupal.org/node/895232 for further information.
 
 ## Local development
 - This module is developed using DDEV and the "DDEV Drupal Contrib" add-on.
-  - See https://github.com/ddev/ddev-drupal-contrib for instructions.
+  - Do the following for an initial vanilla Drupal setup:
+      - Run `ddev config --project-type=drupal --docroot=web --php-version=8.3`.
+      - Run `ddev add-on get ddev/ddev-drupal-contrib`
+      - Run `ddev start`
+      - Run `ddev poser`
+      - Run `ddev symlink-project`
+  - See https://github.com/ddev/ddev-drupal-contrib for the full instructions about how to use this add-on.
+- After you have built a local DDEV environment, do the following:
+  - Run `ddev drush si` to install Drupal.
+  - Run `ddev drush en asusf_installer_forms` to install the ASU Installer Forms module.
+  - Log into the site as the admin user with `ddev drush uli`.
+  - Navigate to the home page and fill out the "Initial Configuration" form that will enable and configure governance on the site.
+- Now you can proceed with testing etc.
