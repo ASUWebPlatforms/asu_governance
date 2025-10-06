@@ -1,0 +1,51 @@
+#!/bin/bash
+##
+## Usage: setup-local
+## Description: Set up a local dev environment for asu_governance development and testing.
+## Example: `ddev setup-local`
+##
+
+set -eu -o pipefail
+
+# Define color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+function show_help() {
+  sed -n 's/^##//p' ${0}
+}
+
+while :; do
+  case ${1:-} in
+  -h | -\? | --help)
+    show_help
+    exit
+    ;;
+  --) # End of all options.
+    shift
+    break
+    ;;
+  -?*)
+    printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+    ;;
+  *) # Default case: No more options, so break out of the loop.
+    break ;;
+  esac
+
+  shift
+done
+
+
+function setuplocal() {
+  ddev config --project-type=drupal10 --docroot=web --php-version=8.3;
+  ddev add-on get ddev/ddev-drupal-contrib;
+  ddev start;
+  ddev poser;
+  ddev symlink-project;
+  ddev drush si -y;
+  ddev drush en asusf_installer_forms -y;
+  ddev launch "$(ddev drush uli)";
+}
+
+setuplocal

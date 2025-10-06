@@ -17,20 +17,11 @@ See: https://www.drupal.org/node/895232 for further information.
 - Site Administrators will have access to the "ASU Governance settings" page located in the System submenu of the Configuration menu.
 
 ## Local development
-- This module is developed using DDEV and the "DDEV Drupal Contrib" add-on.
-  - Do the following for an initial vanilla Drupal setup:
-      - Run `ddev config --project-type=drupal10 --docroot=web --php-version=8.3`.
-      - Run `ddev add-on get ddev/ddev-drupal-contrib`
-      - Run `ddev start`
-      - Run `ddev poser`
-      - Run `ddev symlink-project`
-  - See https://github.com/ddev/ddev-drupal-contrib for the full instructions about how to use this add-on.
-- After you have built a local DDEV environment, do the following:
-  - Run `ddev drush si` to install Drupal.
-  - Run `ddev drush en asusf_installer_forms` to install the ASU Installer Forms module.
-  - Log into the site as the admin user with `ddev drush uli`.
-  - Navigate to the home page and fill out the "Initial Configuration" form that will enable and configure governance on the site.
-  - Create a site administrator account: `ddev drush ucrt siteadmin`
-  - Assign the "Site Administrator" role to the siteadmin user: `ddev drush urol administrator siteadmin`
-  - Log in with the siteadmin user: `ddev drush uli siteadmin`
+- Clone the repository to your local machine with git.
+- Navigate to the repository's root directory and run `ddev setup-local`.
+- After a browser window opens, navigate to the homepage and fill out the site installation form. This will enable and configure the asu_governance module correctly.
+- Create an administrator user with `ddev add-admin <username>`.
+- Log in as the administrator user you just created: `ddev drush uli <username>`.
 - Now you can proceed with development and testing etc.
+- This development environment is created using DDEV and the "DDEV Drupal Contrib" add-on.
+  - See https://github.com/ddev/ddev-drupal-contrib for the full instructions about how to use this add-on.

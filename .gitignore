@@ -5,6 +5,11 @@ web/
 .gitattributes
 vendor/
 .ddev/*
+.ddev/commands/*
+!.ddev/commands/host
+.ddev/commands/host/*
+!.ddev/commands/host/setup-local
+!.ddev/commands/host/add-admin
 !.ddev/.env.web
 !.ddev/config.yaml
 !.ddev/config.local.yaml
