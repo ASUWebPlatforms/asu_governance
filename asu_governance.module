@@ -9,6 +9,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element;
 use Drupal\Core\Url;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Cache\Cache;
 
 /**
  * Implements hook_preprocess_page().
@@ -196,6 +197,8 @@ function asu_governance_local_tasks_alter(&$local_tasks) {
   // If the current user is not an administrator, remove the sync tab.
   if (!$current_user->hasRole('administrator')) {
     unset($local_tasks['config.sync']);
+    // Invalidate the cache tag for the local tasks to ensure changes take effect.
+    Cache::invalidateTags(['config:block.block.claro_primary_local_tasks']);
   }
   // Remove the default import tab, since we're using a custom one.
   unset($local_tasks['config.import']);
