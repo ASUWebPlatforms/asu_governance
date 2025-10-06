@@ -19,7 +19,7 @@ See: https://www.drupal.org/node/895232 for further information.
 ## Local development
 - This module is developed using DDEV and the "DDEV Drupal Contrib" add-on.
   - Do the following for an initial vanilla Drupal setup:
-      - Run `ddev config --project-type=drupal --docroot=web --php-version=8.3`.
+      - Run `ddev config --project-type=drupal10 --docroot=web --php-version=8.3`.
       - Run `ddev add-on get ddev/ddev-drupal-contrib`
       - Run `ddev start`
       - Run `ddev poser`
