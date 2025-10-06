@@ -30,4 +30,7 @@ See: https://www.drupal.org/node/895232 for further information.
   - Run `ddev drush en asusf_installer_forms` to install the ASU Installer Forms module.
   - Log into the site as the admin user with `ddev drush uli`.
   - Navigate to the home page and fill out the "Initial Configuration" form that will enable and configure governance on the site.
-- Now you can proceed with testing etc.
+  - Create a site administator account: `ddev drush ucrt siteadmin`
+  - Assign the "Site Administrator" role to the siteadmin user: `ddev drush urol "Administrator" siteadmin`
+  - Log in with the siteadmin user: `ddev drush uli siteadmin`
+- Now you can proceed with development and testing etc.
