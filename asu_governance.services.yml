@@ -18,7 +18,7 @@ services:
     autowire: true
     tags:
       - { name: access_check, applies_to: _config_admin_access }
-    Drupal\asu_governance\Services\ConfigAdminAccessCheck: '@asu_governance.asu_governance.config_admin_access'
+    Drupal\asu_governance\Services\ConfigAdminAccessCheck: '@asu_governance.config_admin_access'
 
   asu_governance.perms_roles_access_check:
     class: Drupal\asu_governance\Services\PermsRolesAccessCheck
