@@ -191,7 +191,7 @@ function asu_governance_form_alter(&$form, FormStateInterface $form_state, $form
  * Implements hook_local_tasks_alter().
  */
 function asu_governance_local_tasks_alter(&$local_tasks) {
-  // get current user.
+  // Get current user.
   $current_user = \Drupal::currentUser();
   // If the current user is not an administrator, remove the sync tab.
   if (!$current_user->hasRole('administrator')) {
