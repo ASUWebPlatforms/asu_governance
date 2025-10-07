@@ -36,6 +36,7 @@ asu_governance.config.import:
   route_name: config.import_single
   title: 'Import'
   base_route: config.sync
+  weight: -1
 
 asu_governance.config.import_full:
   route_name: config.import_full

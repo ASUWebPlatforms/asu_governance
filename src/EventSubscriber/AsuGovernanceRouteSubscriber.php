@@ -27,19 +27,26 @@ final class AsuGovernanceRouteSubscriber extends RouteSubscriberBase {
   ];
 
   /**
+   * Config routes.
+   *
+   * @const array
+   */
+  public const CONFIG_ROUTES = [
+    'config.diff',
+    'config.diff_collection',
+    'config.export_download',
+    'config.export_full',
+    'config.export_single',
+    'config.import_full',
+    'config.import_single',
+    'config.sync',
+  ];
+
+  /**
    * {@inheritdoc}
    */
   protected function alterRoutes(RouteCollection $collection): void {
-    $configRoutes = [
-      'config.diff',
-      'config.diff_collection',
-      'config.export_download',
-      'config.export_full',
-      'config.export_single',
-      'config.import_full',
-      'config.import_single',
-      'config.sync',
-    ];
+    $configRoutes = $this::CONFIG_ROUTES;
 
     $permissionsRoutes = $this::PERMSROUTES;
 

@@ -208,3 +208,18 @@ function asu_governance_menu_links_discovered_alter(&$links) {
   // Remove the Configuration synchronization link.
   unset($links['config.sync']);
 }
+
+/**
+ * Implements hook_preprocess_HOOK() for block.
+ */
+function asu_governance_preprocess_block(&$variables) {
+  $block = $variables['elements']['#id'] ?? NULL;
+  if ($block === 'claro_primary_local_tasks') {
+    $route = \Drupal::routeMatch()->getRouteName();
+    $configArray = \Drupal::service('asu_governance.route_subscriber')::CONFIG_ROUTES;
+    if (in_array($route, $configArray, TRUE)) {
+      // invalidate the local_task cache tag to allow for dynamic permissions
+      \Drupal::service('cache_tags.invalidator')->invalidateTags(['local_task']);
+    }
+  }
+}
