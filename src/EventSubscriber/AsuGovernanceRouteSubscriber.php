@@ -27,19 +27,26 @@ final class AsuGovernanceRouteSubscriber extends RouteSubscriberBase {
   ];
 
   /**
+   * Config routes.
+   *
+   * @const array
+   */
+  public const CONFIG_ROUTES = [
+    'config.diff',
+    'config.diff_collection',
+    'config.export_download',
+    'config.export_full',
+    'config.export_single',
+    'config.import_full',
+    'config.import_single',
+    'config.sync',
+  ];
+
+  /**
    * {@inheritdoc}
    */
   protected function alterRoutes(RouteCollection $collection): void {
-    $configRoutes = [
-      'config.diff',
-      'config.diff_collection',
-      'config.export_download',
-      'config.export_full',
-      'config.export_single',
-      'config.import_full',
-      'config.import_single',
-      'config.sync',
-    ];
+    $configRoutes = $this::CONFIG_ROUTES;
 
     $permissionsRoutes = $this::PERMSROUTES;
 
@@ -49,10 +56,16 @@ final class AsuGovernanceRouteSubscriber extends RouteSubscriberBase {
       if (!$route) {
         continue;
       }
+
       if ($route->getRequirement('_permission') === 'synchronize configuration' || $route->getRequirement('_permission') === 'import configuration' || $route->getRequirement('_permission') === 'export configuration') {
         $route->setRequirements([]);
-        $route->setRequirement('_allow_asu_config_access',
-          'TRUE');
+
+        if ($route_name === 'config.import_full' || $route_name === 'config.sync') {
+          // Only allow administrator role access.
+          $route->setRequirement('_config_admin_access', 'TRUE');
+        }
+        // Allow access to other config routes based on custom permission check.
+        $route->setRequirement('_allow_asu_config_access', 'TRUE');
       }
     }
     foreach ($permissionsRoutes as $routeName) {

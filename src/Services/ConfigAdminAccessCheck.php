@@ -8,9 +8,9 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Routing\Access\AccessInterface;
 
 /**
- * Checks access for the config management.
+ * Checks access for admins on the config sync management.
  */
-class ConfigAccessCheck implements AccessInterface {
+class ConfigAdminAccessCheck implements AccessInterface {
 
   /**
    * Constructs a new ConfigAccessCheck object.
@@ -37,8 +37,7 @@ class ConfigAccessCheck implements AccessInterface {
 
     /** @var \Drupal\user\Entity\User $user */
     $user = $this->entityTypeManager->getStorage('user')->load($account->id());
-    $allowConfigAccess = \Drupal::service('config.factory')->getEditable('asu_governance.settings')->get('allow_config_access');
-    if (($allowConfigAccess && $user->hasRole('site_builder')) || $user->hasRole('administrator')) {
+    if ($user->hasRole('administrator')) {
       return AccessResult::allowed();
     }
 

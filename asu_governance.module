@@ -186,3 +186,40 @@ function asu_governance_form_alter(&$form, FormStateInterface $form_state, $form
     }
   }
 }
+
+/**
+ * Implements hook_local_tasks_alter().
+ */
+function asu_governance_local_tasks_alter(&$local_tasks) {
+  // Get current user.
+  $current_user = \Drupal::currentUser();
+  // If the current user is not an administrator, remove the sync tab.
+  if (!$current_user->hasRole('administrator')) {
+    unset($local_tasks['config.sync']);
+  }
+  // Remove the default import tab, since we're using a custom one.
+  unset($local_tasks['config.import']);
+}
+
+/**
+ * Implements hook_menu_links_discovered_alter().
+ */
+function asu_governance_menu_links_discovered_alter(&$links) {
+  // Remove the Configuration synchronization link.
+  unset($links['config.sync']);
+}
+
+/**
+ * Implements hook_preprocess_HOOK() for block.
+ */
+function asu_governance_preprocess_block(&$variables) {
+  $block = $variables['elements']['#id'] ?? NULL;
+  if ($block === 'claro_primary_local_tasks') {
+    $route = \Drupal::routeMatch()->getRouteName();
+    $configArray = \Drupal::service('asu_governance.route_subscriber')::CONFIG_ROUTES;
+    if (in_array($route, $configArray, TRUE)) {
+      // invalidate the local_task cache tag to allow for dynamic permissions
+      \Drupal::service('cache_tags.invalidator')->invalidateTags(['local_task']);
+    }
+  }
+}

@@ -45,7 +45,8 @@ class Batch {
     $batch = &batch_get();
     if (!empty($batch)) {
       if (empty($batch['id'])) {
-        $batch['id'] = $batch_id; // Manually set the ID.
+        // Manually set the ID.
+        $batch['id'] = $batch_id;
       }
       // Save the batch ID to state storage.
       \Drupal::state()->set('downgrade_admin_batch', $batch['id']);
