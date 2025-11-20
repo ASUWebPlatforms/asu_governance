@@ -637,4 +637,16 @@ trait ConstantsTrait {
     'switch users',
   ];
 
+  /**
+   * Whitelisted permissions.
+   *
+   * Permissions that will be granted to the Site Builder role,
+   * regardless of if they are on the Blacklist or not.
+   *
+   * @var string[]
+   */
+  public const BASE_SB_WHITELIST = [
+    'administer software updates',
+  ];
+
 }

@@ -201,7 +201,8 @@ class ModulePermissionHandler {
       // Grant permissions not in the blacklist.
       foreach ($modulePermissions as $permission) {
         $permissionBlacklist = $this->configFactory->get('asu_governance.settings')->get('permissions_blacklist');
-        if (!in_array($permission, $permissionBlacklist, TRUE)) {
+        $permissionWhitelist = static::BASE_SB_WHITELIST;
+        if (in_array($permission, $permissionWhitelist, TRUE) || !in_array($permission, $permissionBlacklist, TRUE)) {
           $role->grantPermission($permission);
         }
       }
