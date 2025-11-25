@@ -269,3 +269,14 @@ function asu_governance_update_10003() {
       ->save();
   }
 }
+
+/**
+ * Allow existing sitebuilders to use update.php
+ */
+function asu_governance_update_10004() {
+  $site_builder_role = Role::load('site_builder');
+  if ($site_builder_role && !$site_builder_role->hasPermission('administer software updates')) {
+    $site_builder_role->grantPermission('administer software updates');
+    $site_builder_role->save();
+  }
+}

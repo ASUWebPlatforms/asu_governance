@@ -414,6 +414,7 @@ trait ConstantsTrait {
     'administer shortcuts',
     'administer site configuration',
     'administer sitemap settings',
+    'administer software updates',
     'administer taxonomy',
     'administer taxonomy_term display',
     'administer taxonomy_term fields',
