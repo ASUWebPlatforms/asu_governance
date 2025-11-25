@@ -256,3 +256,16 @@ function asu_governance_update_10002() {
   $gov_config->set('installer_forms_completed', TRUE)->save();
   $config_forms->delete();
 }
+
+/**
+ * Fix webspark_installer_forms error due to incomplete uninstall.
+ */
+function asu_governance_update_10003() {
+  $installed_modules = \Drupal::config('core.extension')->get('module');
+  if (isset($installed_modules['webspark_installer_forms'])) {
+    unset($installed_modules['webspark_installer_forms']);
+    \Drupal::configFactory()->getEditable('core.extension')
+      ->set('module', $installed_modules)
+      ->save();
+  }
+}
