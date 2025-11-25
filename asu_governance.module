@@ -179,9 +179,14 @@ function asu_governance_form_alter(&$form, FormStateInterface $form_state, $form
   }, $permsArray);
   if (in_array($form_id, $permsArrayFormIds, TRUE)) {
     $blacklist = \Drupal::configFactory()->get('asu_governance.settings')->get('permissions_blacklist');
+    $whitelist = \Drupal::service('asu_governance.module_permission_handler')::BASE_SB_WHITELIST;
     foreach ($blacklist as $permission) {
       if (isset($form['permissions'][$permission])) {
         $form['permissions'][$permission]['#disabled'] = TRUE;
+        // Override for Site Builder role if permission is in whitelist.
+        if (in_array($permission, $whitelist, TRUE) && isset($form['permissions'][$permission]['site_builder'])) {
+          $form['permissions'][$permission]['site_builder']['#disabled'] = FALSE;
+        }
       }
     }
   }
