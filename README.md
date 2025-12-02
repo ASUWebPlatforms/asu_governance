@@ -13,6 +13,11 @@ This module is intended to be used only on ASU Drupal sites hosted on the Acquia
 Install as you would normally install a contributed Drupal module.
 See: https://www.drupal.org/node/895232 for further information.
 
+## Versions
+- The 1.x branch is the main branch, and it targets use of Drush ^12.5
+- The 2.x branch is the same as 1.x but targets the use of Drush ^13
+This is due to the fact that some deployments need different Drush versions.
+
 ## Configuration
 - Site Administrators will have access to the "ASU Governance settings" page located in the System submenu of the Configuration menu.
 
