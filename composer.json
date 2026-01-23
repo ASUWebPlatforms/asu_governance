@@ -4,7 +4,7 @@
     "type": "drupal-module",
     "license": "MIT",
     "require": {
-        "drush/drush": "^12.5",
+        "drush/drush": "^13",
         "drupal/cas": "^2.3",
         "drupal/purge": "^3.6",
         "drupal/acquia_purge": "^1.5",
