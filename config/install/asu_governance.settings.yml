@@ -45,6 +45,7 @@ allowable_modules:
   - honeypot
   - views_bulk_operations
   - metatag_views
+  - layout_builder_component_attributes
 allowable_themes:
   - claro
   - radix

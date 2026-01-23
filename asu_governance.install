@@ -272,3 +272,26 @@ function asu_governance_update_10003() {
     \Drupal::keyValue('system.schema')->delete('webspark_installer_forms');
   }
 }
+
+/**
+ * Update allowable modules and permissions.
+ */
+function asu_governance_update_10004() {
+
+  $newModules = [
+    'layout_builder_component_attributes',
+  ];
+
+  $config = \Drupal::service('config.factory')->getEditable('asu_governance.settings');
+
+  $moduleList = $config->get('allowable_modules', []);
+  foreach ($newModules as $module) {
+    if (!in_array($module, $moduleList, TRUE)) {
+      $moduleList[] = $module;
+    }
+  }
+  $config->set('allowable_modules', $moduleList);
+
+  $config->save();
+
+}
