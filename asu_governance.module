@@ -191,9 +191,22 @@ function asu_governance_form_alter(&$form, FormStateInterface $form_state, $form
     }
   }
   if ($form_id === 'user_admin_permissions' && count($form['role_names']['#value'] ?? []) > 1)  {
-    $form['#attributes']['inert'] = 'inert';
+    $form["custom_prefix"] = [
+      '#type' => 'container',
+      '#markup' => '<div id="disabled-permissions" class="messages messages--warning" role="alert" data-drupal-message-type="warning"><div class="messages__header"><h2 class="messages__title">Please note</h2></div><div class="messages__content"><p>To avoid submission timeouts, we have <span class="warn"><strong>DISABLED</strong></span> this aggregated permissions form. To change permissions, please select a specific role from the <em>Roles</em> tab and edit permissions for that role individually.</p></div></div>',
+      '#attached' => [
+        'library' => [
+          'core/drupal.dialog',
+        ],
+      ],
+      '#weight' => -10,
+    ];
+    $form['#attributes']['class'][] = 'permissions-aggregated';
+    $form['filters']['#attributes']['inert'] = 'inert';
+    $form['system_compact_link']['#attributes']['inert'] = 'inert';
+    $form['permissions']['#attributes']['inert'] = 'inert';
+    $form['permissions']['#attributes']['class'][] = 'permissions-inert';
     $form["actions"]["submit"]["#disabled"] = TRUE;
-    $form["#prefix"] = '<p id="disabled-permissions">' . t('<strong><span class="underline">Please note</span>: To avoid submission timeouts, we have <span class="red">DISABLED</span> this aggregated permissions form. To change permissions, please select a specific role from the <em>Roles</em> tab and edit permissions for that role individually.</strong>') . '</p>';
   }
 }
 
