@@ -104,7 +104,6 @@ class ChangeSuperAdminService {
     'tbutterf',
     'stwilli2',
     'ddoozan',
-    'kdmarks',
     'mjenki10',
     'ikrondo',
     'thudso38',
