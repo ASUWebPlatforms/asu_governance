@@ -95,8 +95,6 @@ class ChangeSuperAdminService {
     'apersky',
     'mlsamuel',
     'cphill',
-    'ddavis35',
-    'gamille7',
     'igardun1',
     'dlevy4',
     'abrockha',
