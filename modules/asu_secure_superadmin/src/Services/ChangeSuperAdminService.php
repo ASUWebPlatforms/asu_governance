@@ -82,35 +82,6 @@ class ChangeSuperAdminService {
   protected $casUserManager;
 
   /**
-   * An array of ASU Enterprise Technology admins.
-   *
-   * @var string[]
-   */
-  public const ETADMINS = [
-    'rmlebla1',
-    'dornela3',
-    'tkaiserb',
-    'tlstarr',
-    'mmilner6',
-    'apersky',
-    'mlsamuel',
-    'cphill',
-    'ddavis35',
-    'gamille7',
-    'igardun1',
-    'dlevy4',
-    'abrockha',
-    'jmitriat',
-    'tbutterf',
-    'stwilli2',
-    'ddoozan',
-    'kdmarks',
-    'mjenki10',
-    'ikrondo',
-    'thudso38',
-  ];
-
-  /**
    * Constructs a new ChangeSuperAdminService object.
    */
   public function __construct(
@@ -186,7 +157,7 @@ class ChangeSuperAdminService {
     // Reload the newUser object to get the new uid.
     $newUserReloaded = user_load_by_name($original_name);
     $roles = $newUserReloaded->getRoles();
-    if (in_array('administrator', $roles) && !in_array($original_name, self::ETADMINS)) {
+    if (in_array('administrator', $roles)) {
       $newUserReloaded->removeRole('administrator');
       $newUserReloaded->save();
     }
@@ -237,9 +208,6 @@ class ChangeSuperAdminService {
         if ($adminUser instanceof User) {
           $resetUsername = str_replace('@asu.edu', '', $adminUser->getAccountName());
           $adminUser->set('name', $resetUsername);
-          if (in_array($resetUsername, self::ETADMINS)) {
-            $adminUser->addRole('administrator');
-          }
           $adminUser->save();
         }
         // Allow admin user to log in via CAS.
@@ -251,7 +219,7 @@ class ChangeSuperAdminService {
         // Reload the newUser object to get the new uid.
         $newUserReloaded = user_load_by_name($resetUsername);
         $roles = $newUserReloaded->getRoles();
-        if (in_array('administrator', $roles) && !in_array($resetUsername, self::ETADMINS)) {
+        if (in_array('administrator', $roles)) {
           $newUserReloaded->removeRole('administrator');
           $newUserReloaded->save();
         }

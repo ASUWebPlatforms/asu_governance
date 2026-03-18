@@ -30,13 +30,6 @@ final class DowngradeAdmins {
     $uids = $query->execute();
     $users = \Drupal::entityTypeManager()->getStorage('user')->loadMultiple($uids);
 
-    $etAsurites = $this->changeSuperAdminService::ETADMINS;
-
-    $users = array_values(array_filter($users, function ($user) use ($etAsurites) {
-      assert($user instanceof User);
-      return !in_array($user->getAccountName(), $etAsurites);
-    }));
-
     Batch::run($users);
     // Run manually if not part of a site install, update or form submission.
     if (!((defined('MAINTENANCE_MODE') && (MAINTENANCE_MODE === 'update' || MAINTENANCE_MODE === 'install')) || \Drupal::request()->isMethod('POST'))) {
