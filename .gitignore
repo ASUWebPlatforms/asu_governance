@@ -11,9 +11,13 @@ vendor/
 .ddev/commands/host/*
 !.ddev/commands/host/setup-local
 !.ddev/commands/host/add-admin
+!.ddev/commands/web/
+.ddev/commands/web/*
+!.ddev/commands/web/asusf:aliases
 !.ddev/.env.web
 !.ddev/config.yaml
 !.ddev/config.local.yaml
 !.ddev/.gitignore
 composer.lock
+drush/
 

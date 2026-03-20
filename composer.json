@@ -9,12 +9,18 @@
         "drupal/purge": "^3.6",
         "drupal/acquia_purge": "^1.5",
         "drupal/simple_sitemap": "^4.2",
-        "drupal/admin_toolbar": "^3.5"
+        "drupal/admin_toolbar": "^3.5",
+        "acquia/acsf-tools": "11.0.1"
     },
     "config": {
         "allow-plugins": {
             "php-http/discovery": true,
-            "tbachert/spi": true
+            "tbachert/spi": true,
+            "composer/installers": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "phpstan/extension-installer": true,
+            "cweagans/composer-patches": true,
+            "drupal/core-composer-scaffold": true
         },
         "audit": {
             "block-insecure": false

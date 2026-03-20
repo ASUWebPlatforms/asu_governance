@@ -1,0 +1,160 @@
+#!/bin/bash
+##
+## Usage: asusf:aliases
+## Description: Generate all Drush aliases for ASU Site Factory stacks
+##
+## To use it, set up the needed ACQUIA_FACTORY_URL, ACQUIA_API_KEY, ACQUIA_API_SECRET, ACQUIA_ACSF_USERNAME and ACQUIA_ACSF_KEY
+## in global or project config, just as described in https://ddev.readthedocs.io/en/stable/users/providers/acquia/.
+##  - The ACQUIA_ACSF_USERNAME is the username you use to log in to the ASU Factory site (ASURITE@asu.edu).
+##  - The ACQUIA_ACSF_KEY is the API key found at https://www.asufactory1.acsitefactory.com/user/your_user_id/api-key.
+##
+## This script requires the jq, drush, and acli commands to be available.
+## Install jq: https://jqlang.org/download/
+## Install Drush: https://www.drush.org/13.x/install/ (likely already installed via Composer)
+## Install acli: https://docs.acquia.com/acquia-cloud-platform/add-ons/acquia-cli/docs/install
+##
+
+set -eu -o pipefail
+
+# Define color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED_BG='\033[41m'
+GREEN_BG='\033[42m'
+NC='\033[0m' # No Color
+
+function show_help() {
+  sed -n 's/^##//p' ${0}
+}
+
+while :; do
+  case ${1:-} in
+  -h | -\? | --help)
+    show_help
+    exit
+    ;;
+  --) # End of all options.
+    shift
+    break
+    ;;
+  -?*)
+    printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+    ;;
+  *) # Default case: No more options, so break out of the loop.
+    break ;;
+  esac
+
+  shift
+done
+
+function create_subsite_aliases() {
+  # Adjust for different Drush versions
+  if [[ ${choice} == 4 ]]; then
+    root_dir="/var/www/html/docroot"
+  else
+    root_dir="/app/docroot"
+  fi
+  if [[ ${choice} != 1 ]]; then
+      asunum=${choice}
+    else
+      asunum=""
+  fi
+  for site_name in "${sites[@]}"; do
+    # Create the drush/sites directory if it doesn't exist
+    mkdir -p drush/sites
+    # Write/overwrite the drush/sites/${site_name}.site.yml file
+    # Could make this more dynamic by pulling remote environ details via
+    # `acli remote:aliases:list` but these are not likely to change often.
+    cat <<EOF > drush/sites/${site_name}.site.yml
+# Alias added by acquia-pull
+# Local DDEV site
+local:
+  root: ${root_dir}
+  uri: ${site_name}.asu${asunum}.ddev.site
+# ${site_name} Site Factory environments
+live:
+  uri: ${site_name}.asufactory1.acsitefactory.com
+  host: asufactory${choice}0${choice}live.ssh.enterprise-g1.acquia-sites.com
+  options: { }
+  paths: { dump-dir: /mnt/tmp }
+  root: /var/www/html/asufactory${choice}.0${choice}live/docroot
+  user: asufactory${choice}.0${choice}live
+  ssh: { options: '-p 22' }
+test:
+  uri: ${site_name}.test-asufactory1.acsitefactory.com
+  host: asufactory${choice}0${choice}test.ssh.enterprise-g1.acquia-sites.com
+  options: { }
+  paths: { dump-dir: /mnt/tmp }
+  root: /var/www/html/asufactory${choice}.0${choice}test/docroot
+  user: asufactory${choice}.0${choice}test
+  ssh: { options: '-p 22' }
+dev:
+  uri: ${site_name}.dev-asufactory1.acsitefactory.com
+  host: asufactory${choice}0${choice}dev.ssh.enterprise-g1.acquia-sites.com
+  options: { }
+  paths: { dump-dir: /mnt/tmp }
+  root: /var/www/html/asufactory${choice}.0${choice}dev/docroot
+  user: asufactory${choice}.0${choice}dev
+  ssh: { options: '-p 22' }
+EOF
+    # Check if the file was created successfully
+    if [ -e "drush/sites/${site_name}.site.yml" ]; then
+      echo -e "${GREEN_BG}[success]${GREEN} Drush alias for ${site_name} created successfully.${NC}"
+    else
+      echo -e "${RED_BG}[error]${NC} Failed to create Drush alias for ${site_name}." >&2
+      exit 1
+    fi
+  done
+}
+
+# Handle initial authentication via Acquia secrets and ssh
+function authenticate() {
+  if [ -z "${ACQUIA_FACTORY_URL:-}" ]; then echo "Please make sure you have set ACQUIA_FACTORY_URL in your project or global config" && exit 1; fi
+  if [ -z "${ACQUIA_API_KEY:-}" ] || [ -z "${ACQUIA_API_SECRET:-}" ]; then echo "Please make sure you have set ACQUIA_API_KEY and ACQUIA_API_SECRET in your project or global config" && exit 1; fi
+  if [ -z "${ACQUIA_ACSF_USERNAME:-}" ] || [ -z "${ACQUIA_ACSF_KEY:-}" ]; then echo "Please make sure you have set ACQUIA_ACSF_USERNAME and ACQUIA_ACSF_KEY in your project or global config" && exit 1; fi
+  if [ -z "${AH_ORGANIZATION_UUID:-}" ]; then echo "Please make sure you have set AH_ORGANIZATION_UUID in your project or global config" && exit 1; fi
+  if ! command -v ddev drush >/dev/null; then echo "Please make sure your project contains drush, ddev composer require drush/drush" && exit 1; fi
+  ssh-add -l >/dev/null || { echo "Please 'ddev auth ssh' before running this command." && exit 1; }
+  acli auth:login -n -vvv --key="${ACQUIA_API_KEY}" --secret="${ACQUIA_API_SECRET}"
+  acli auth:acsf-login --username="${ACQUIA_ACSF_USERNAME}" --key="${ACQUIA_ACSF_KEY}" --factory-url="${ACQUIA_FACTORY_URL}"
+}
+
+function get_site_list() {
+  mapfile -t sites < <(acli acsf:sites:find --limit=1000 --stack_id=${choice} | jq -r '.sites[].site')
+  export sites
+  if [ ${#sites[@]} -eq 0 ]; then
+    echo -e "${RED_BG}[error]${RED} No sites found for the selected stack.${NC}"
+    exit 1
+  fi
+}
+
+options=("Webspark Stack" "The College Stack" "Drupal Stack" "Webspark Stack (Drupal 9)")
+# Display the menu with indented numbers
+echo -e "${YELLOW}Please choose a site factory stack:${NC}"
+for i in "${!options[@]}"; do
+  printf "  %d) %s\n" $((i + 1)) "${options[i]}"
+done
+
+# Read user input
+while :; do
+  echo -en "${YELLOW}Enter your choice: ${NC}"
+  read choice
+  if [[ $choice -ge 1 && $choice -le ${#options[@]} ]]; then
+    export stack_name="${options[choice-1]}"
+    if [[ "$stack_name" == "Quit" ]]; then
+      echo "Exiting..."
+      exit 0
+    fi
+      echo "You selected: $stack_name"
+    break
+  else
+    echo -e "${RED}Invalid choice. Please try again.${NC}"
+  fi
+done
+
+authenticate || (printf "Failed to authenticate" && exit $?)
+
+get_site_list
+
+create_subsite_aliases

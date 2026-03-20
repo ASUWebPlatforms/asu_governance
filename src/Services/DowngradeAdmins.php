@@ -28,8 +28,13 @@ final class DowngradeAdmins {
       ->accessCheck(FALSE)
       ->condition('roles', 'administrator');
     $uids = $query->execute();
-    $users = \Drupal::entityTypeManager()->getStorage('user')->loadMultiple($uids);
 
+    if (empty($uids)) {
+      $this->logger->get('asu_governance')->notice('No administrators found to downgrade.');
+      return;
+    }
+
+    $users = \Drupal::entityTypeManager()->getStorage('user')->loadMultiple($uids);
     Batch::run($users);
     // Run manually if not part of a site install, update or form submission.
     if (!((defined('MAINTENANCE_MODE') && (MAINTENANCE_MODE === 'update' || MAINTENANCE_MODE === 'install')) || \Drupal::request()->isMethod('POST'))) {
