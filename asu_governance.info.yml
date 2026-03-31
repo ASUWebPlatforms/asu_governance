@@ -5,8 +5,3 @@ package: ASU
 core_version_requirement: ^10.3 || ^11
 dependencies:
   - asu_secure_superadmin:asu_secure_superadmin
-  - drupal:cas
-  - drupal:purge
-  - drupal:acquia_purge
-  - drupal:simple_sitemap
-  - drupal:admin_toolbar
