@@ -43,7 +43,7 @@ final class AsuGovernanceCommands extends DrushCommands {
   }
 
   /**
-   * An interactive tool for managing admin roles on Acquia sites.
+   * An interactive tool for adding users on Acquia sites.
    */
   #[CLI\Command(name: 'asu_governance:add-user', aliases: ['agau'])]
   #[CLI\Option(name: 'username', description: 'The username (ASURITE Id) to manage')]

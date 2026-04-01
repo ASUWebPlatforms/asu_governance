@@ -10,93 +10,12 @@
 #   ./role-manager --action add --role administrator --username jdoe --site-alias @mysite.dev        # Remote single site (no stack needed)
 #   ./role-manager --action add --role administrator --username jdoe --site-alias allsites --stack 1 # All sites on a specific stack
 
-# ========================== Color Codes ====================================
+# ========================== Source shared code ==============================
 
-# Define color codes
-RED='\033[0;31m'
-CYAN='\033[0;36m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m' # No Color
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/_common.sh"
 
-# ========================== Configuration ==================================
-
-# Define the drush alias for applying changes to all sites via acsf-tools
-ALL_SITES_ALIAS="@websparkci"
-
-DEFAULT_ENVIRONMENT="live"
-
-# Define available Acquia Site Factory stacks
-# Keys correspond to ACSF stack numbers
-declare -A STACKS=(
-  [0]="All stacks"
-  [1]="Webspark Stack"
-  [3]="Drupal Stack"
-  [4]="Webspark Stack [Drupal 9]"
-)
-
-# Define available roles to manage
-declare -a ROLES=(
-  "administrator"
-  "site_builder"
-)
-
-# ========================== Functions -----------------------------------
-
-# Handle initial authentication via Acquia secrets and ssh
-function authenticate() {
-  if [ -z "${ACQUIA_FACTORY_URL:-}" ]; then echo "Please make sure you have set ACQUIA_FACTORY_URL in your project or global config" && exit 1; fi
-  if [ -z "${ACQUIA_API_KEY:-}" ] || [ -z "${ACQUIA_API_SECRET:-}" ]; then echo "Please make sure you have set ACQUIA_API_KEY and ACQUIA_API_SECRET in your project or global config" && exit 1; fi
-  if [ -z "${ACQUIA_ACSF_USERNAME:-}" ] || [ -z "${ACQUIA_ACSF_KEY:-}" ]; then echo "Please make sure you have set ACQUIA_ACSF_USERNAME and ACQUIA_ACSF_KEY in your project or global config" && exit 1; fi
-  if [ -z "${AH_ORGANIZATION_UUID:-}" ]; then echo "Please make sure you have set AH_ORGANIZATION_UUID in your project or global config" && exit 1; fi
-  if ! command -v ddev drush >/dev/null; then echo "Please make sure your project contains drush, ddev composer require drush/drush" && exit 1; fi
-  ssh-add -l >/dev/null || { echo "Please 'ddev auth ssh' before running this command." && exit 1; }
-  acli auth:login -n --key="${ACQUIA_API_KEY}" --secret="${ACQUIA_API_SECRET}"
-  acli auth:acsf-login --username="${ACQUIA_ACSF_USERNAME}" --key="${ACQUIA_ACSF_KEY}" --factory-url="${ACQUIA_FACTORY_URL}"
-}
-
-# Validate that username contains only safe characters (alphanumeric, dots, hyphens, underscores)
-# and does not start with a dash, to prevent shell option injection.
-function validate_username() {
-  local username=$1
-  if [[ ! "$username" =~ ^[a-zA-Z0-9._-]+$ ]] || [[ "$username" == -* ]]; then
-    return 1
-  fi
-  return 0
-}
-
-# Validate that action is either "add" or "remove"
-function validate_action() {
-  local action=$1
-
-  if [ "$action" != "add" ] && [ "$action" != "remove" ]; then
-    return 1
-  fi
-  return 0
-}
-
-# Extract environment from alias (format: alias.env)
-# Example: mysite.dev -> dev, mysite.local -> local
-function extract_env_from_alias() {
-  local alias=$1
-  # Extract the environment part (everything after the last dot)
-  echo "${alias##*.}"
-}
-
-# Validate that environment is not "local"
-function validate_env_not_local() {
-  local alias=$1
-  if [ "$alias" = "@self" ]; then
-    # If alias is @self, that means it is local, so return false
-    return 1
-  fi
-  local env=$(extract_env_from_alias "$alias")
-
-  if [ "$env" = "local" ]; then
-    return 1
-  fi
-  return 0
-}
+# ========================== Core Function ===================================
 
 # Function to manage (add/remove) a role for a user
 function manage_role() {
@@ -119,8 +38,14 @@ function manage_role() {
 
   # Check if site_alias is specified (single site) or empty (all sites)
   if [ -z "$site_alias" ]; then
-    # All sites mode - use acsf-tools:mlc with ALL_SITES_ALIAS
-    local full_alias="${ALL_SITES_ALIAS}.${environment}"
+    # All sites mode - build per-stack alias from STACK_ALIASES
+    build_stack_alias "$stack" "$environment"
+    local full_alias="$BUILD_STACK_ALIAS_RESULT"
+    if [ -z "$full_alias" ]; then
+      echo -e "  ${RED}✗ [error]${NC} No alias configured for stack '$stack'."
+      return 1
+    fi
+
     # Validate that full_alias is not a local environment
     if ! validate_env_not_local "$full_alias"; then
       echo -e "  ${RED}✗ [error]${NC} Cannot apply changes to all sites on a local environment."
@@ -128,15 +53,9 @@ function manage_role() {
       return 1
     fi
 
-    # If a specific stack was selected (non-zero), pass it through to acsf-tools:mlc
-    local stack_arg=""
-    if [ -n "$stack" ] && [ "$stack" != "0" ]; then
-      stack_arg="--stack=${stack}"
-    fi
-
     echo "  $action_text $role role on stack: $stack_label (all sites, env: $environment)..."
-    if drush "${full_alias}" acsf-tools:mlc user:role:${action} "'$role' '$username'" ${stack_arg:+"${stack_arg}"} --no-interaction 2>&1; then
-      echo -e "  ${CYAN} [info] The attempt to ${YELLOW}${action}${CYAN} the ${YELLOW}$role${CYAN} role $([ "$action" = "add" ] && echo "to" || echo "from") ${YELLOW}$username${CYAN} on ${YELLOW}$stack_label (all sites)${CYAN} has completed.${NC}"
+    if drush "${full_alias}" acsf-tools:mlc user:role:${action} "'$role' '$username'" --no-interaction 2>&1; then
+      echo -e "  ${CYAN} [info] The attempt to ${YELLOW}${action}${CYAN} the ${YELLOW}$role${CYAN} role $([ "$action" = "add" ] && echo "to" || echo "from") the user ${YELLOW}$username${CYAN} in ${YELLOW}all sites${CYAN} on ${YELLOW}stack ${stack}: ${stack_label}${CYAN} in the ${YELLOW}${environment}${CYAN} environment has completed.${NC}"
       echo -e "  ${YELLOW} [note] Please review the output above for any errors or warnings. Make note of any sites that may have failed to update, make adjustments and try again, or update them one-by-one (as appropriate).${NC}"
       return 0
     else
@@ -147,7 +66,7 @@ function manage_role() {
     # Single site mode - use regular drush user role commands
     echo "  $action_text $role role on stack: $stack_label (site_alias: $site_alias)..."
     if drush "${site_alias}" "user:role:${action}" "$role" "$username" --no-interaction 2>&1; then
-      echo -e "  ${GREEN}✓ [success]${NC} Successfully ${action}ed $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on '$stack_label' $site_alias"
+      echo -e "  ${GREEN}✓ [success]${NC} Successfully $([ "$action" = "add" ] && echo "added" || echo "removed") $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on '$stack_label' $site_alias"
       return 0
     else
       echo -e "  ${RED}✗ [error]${NC} Failed to $action $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on '$stack_label' $site_alias"
@@ -156,31 +75,7 @@ function manage_role() {
   fi
 }
 
-# ========================== Wizard UI Functions =============================
-
-# Get sorted stack keys (associative arrays are unordered, so sort numerically)
-function get_sorted_stack_keys() {
-  printf '%s\n' "${!STACKS[@]}" | sort -n
-}
-
-# Get sorted stack keys excluding key 0 ("All stacks" meta-entry).
-# Use this when iterating to execute commands on actual stacks.
-function get_real_stack_keys() {
-  printf '%s\n' "${!STACKS[@]}" | sort -n | grep -v '^0$'
-}
-
-# Get list of available stacks (sorted by key)
-function get_available_stacks() {
-  while IFS= read -r key; do
-    echo "${STACKS[$key]}"
-  done < <(get_sorted_stack_keys)
-}
-
-# Get list of available roles
-function get_available_roles() {
-  printf '%s\n' "${ROLES[@]}"
-}
-
+# ========================== Wizard UI =======================================
 
 # Print header
 function print_header() {
@@ -195,57 +90,6 @@ function print_header() {
   echo -e         "║          (Can be obtained via 'ddev asusf:aliases')        ║"
   echo -e         "╚════════════════════════════════════════════════════════════╝${NC}"
 }
-
-# Print menu with options
-function print_menu() {
-  local title=$1
-  shift
-  local options=("$@")
-
-  echo -e "$title"
-  echo ""
-  for i in "${!options[@]}"; do
-    echo "  $((i+1))) ${options[$i]}"
-  done
-  echo ""
-}
-
-# Get user input from menu
-function get_menu_input() {
-  local prompt=$1
-  local num_options=$2
-  local choice=""
-
-  while [[ ! "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$num_options" ]; do
-    echo -ne "$prompt" >&2
-    read -r choice < /dev/tty
-
-    if [[ ! "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$num_options" ]; then
-      echo -e "${RED}✗ [error]${NC} Invalid selection. Please enter a number between 1 and $num_options." >&2
-      echo "" >&2
-    fi
-  done
-
-  echo "$choice"
-}
-
-# Get text input from user
-function get_text_input() {
-  local prompt=$1
-  local input=""
-
-  while [ -z "$input" ]; do
-    echo -ne "$prompt" >&2
-    read -r input < /dev/tty
-
-    if [ -z "$input" ]; then
-      echo -e "${RED}✗ [error]${NC} Input cannot be empty. Please try again." >&2
-    fi
-  done
-
-  echo "$input"
-}
-
 
 # ========================== Wizard Flow Functions ============================
 
@@ -294,14 +138,6 @@ function run_wizard() {
   else
     # Multiple sites mode - select stack(s) and apply to all sites on those stacks
 
-    # Validate that ALL_SITES_ALIAS is not a local environment
-    if ! validate_env_not_local "$ALL_SITES_ALIAS"; then
-      echo -e "${RED}✗ [error] Multiple sites mode is not available for local environments.${NC}"
-      echo -e "${YELLOW}Please use single site mode and specify a site alias.${NC}"
-      echo ""
-      return
-    fi
-
     # Step 5: Select stack(s)
     echo ""
     echo -e "${YELLOW}Step 5: Select stack(s) to apply changes to all sites:${NC}"
@@ -338,8 +174,6 @@ function run_wizard() {
       selected_stacks=("$stack_choice")
     fi
 
-    # site_alias remains empty, which triggers all-sites mode in manage_role()
-
     # Step 6: Select environment
     echo ""
     local environments=("live" "test" "dev")
@@ -348,14 +182,13 @@ function run_wizard() {
     local selected_env="${environments[$((env_choice - 1))]}"
   fi
 
-  # Step 7 (for both flows): Confirm action
+  # Step 7: Confirm action
   echo ""
   echo -e "${YELLOW}Step 7: Please review your selection:${NC}"
   echo ""
   echo -ne "${CYAN}Are you sure you want to ${YELLOW}$action_text${CYAN} the ${YELLOW}$selected_role${CYAN} role for user ${YELLOW}$username${NC}"
 
   if [ "$site_mode_choice" -eq 1 ]; then
-    # Single site mode
     echo -e " ${CYAN}on site: ${YELLOW}$site_alias${NC}"
   else
     echo -e " ${CYAN}on the following:${NC}"
@@ -439,7 +272,7 @@ function handle_flags() {
   local action=""
   local username=""
   local stack_index=""
-  local site_alias=""  # No default - must be explicitly specified
+  local site_alias=""
 
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -606,7 +439,9 @@ function handle_flags() {
 
 # ========================== Main Script =============================
 
+check_ssh_connectivity
 authenticate || (printf "Failed to authenticate" && exit $?)
+ensure_alias_files
 
 # Check if any arguments were provided
 if [ $# -eq 0 ]; then
