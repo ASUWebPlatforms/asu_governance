@@ -19,5 +19,5 @@ vendor/
 !.ddev/config.local.yaml
 !.ddev/.gitignore
 composer.lock
-drush/
+/drush/
 

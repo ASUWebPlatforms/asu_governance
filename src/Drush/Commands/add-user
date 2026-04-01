@@ -1,14 +1,14 @@
 #!/bin/bash
-# This script is used to manage Drupal roles and permissions.
-# It provides functions to add/remove administrator roles in Drupal using Drush.
-# Usage: ./role-manager                 [Interactive wizard mode]
-#        ./role-manager --help           [Show usage instructions]
-#        ./role-manager --action <add|remove> --username <username> --site_alias <site_alias> [--stack <stack>]
+# This script is used to add a user to a Drupal site.
+# It provides functions to add a user in Drupal using Drush.
+# Usage: ./add-user                 [Interactive wizard mode]
+#        ./add-user --help           [Show usage instructions]
+#        ./add-user --username <username> --site_alias <site_alias> [--stack <stack>]
 #
 # Examples:
-#   ./role-manager --action add --role administrator --username jdoe --site_alias @self              # Local single site (no stack needed)
-#   ./role-manager --action add --role administrator --username jdoe --site_alias @mysite.dev        # Remote single site (no stack needed)
-#   ./role-manager --action add --role administrator --username jdoe --site_alias allsites --stack 1 # All sites on a specific stack
+#   ./add-user --username jdoe --site_alias @self              # Local single site (no stack needed)
+#   ./add-user --username jdoe --site_alias @mysite.dev        # Remote single site (no stack needed)
+#   ./add-user --username jdoe --site_alias allsites --stack 1 # All sites on a specific stack
 
 # ========================== Color Codes ====================================
 
@@ -35,12 +35,6 @@ declare -A STACKS=(
   [4]="Webspark Stack [Drupal 9]"
 )
 
-# Define available roles to manage
-declare -a ROLES=(
-  "administrator"
-  "site_builder"
-)
-
 # ========================== Functions -----------------------------------
 
 # Handle initial authentication via Acquia secrets and ssh
@@ -53,16 +47,6 @@ function authenticate() {
   ssh-add -l >/dev/null || { echo "Please 'ddev auth ssh' before running this command." && exit 1; }
   acli auth:login -n --key="${ACQUIA_API_KEY}" --secret="${ACQUIA_API_SECRET}"
   acli auth:acsf-login --username="${ACQUIA_ACSF_USERNAME}" --key="${ACQUIA_ACSF_KEY}" --factory-url="${ACQUIA_FACTORY_URL}"
-}
-
-# Validate that action is either "add" or "remove"
-function validate_action() {
-  local action=$1
-
-  if [ "$action" != "add" ] && [ "$action" != "remove" ]; then
-    return 1
-  fi
-  return 0
 }
 
 # Extract environment from alias (format: alias.env)
@@ -88,16 +72,12 @@ function validate_env_not_local() {
   return 0
 }
 
-# Function to manage (add/remove) a role for a user
-function manage_role() {
-  local action=$1
-  local username=$2
-  local role=$3
-  local stack=$4
-  local site_alias=$5
-  local environment=${6:-$DEFAULT_ENVIRONMENT}
-
-  local action_text=$([ "$action" = "add" ] && echo "Adding" || echo "Removing")
+# Function to manage add a user
+function add_user() {
+  local username=$1
+  local stack=$2
+  local site_alias=$3
+  local environment=${4:-$DEFAULT_ENVIRONMENT}
 
   # Check if site_alias is specified (single site) or empty (all sites)
   if [ -z "$site_alias" ]; then
@@ -110,23 +90,23 @@ function manage_role() {
       return 1
     fi
 
-    echo "  $action_text $role role on stack: $stack (all sites, env: $environment)..."
-    if drush ${full_alias} acsf-tools:mlc user:role:${action} "'$role' '$username'" --no-interaction 2>&1; then
-      echo -e "  ${CYAN} [info] The attempt to ${YELLOW}${action}${CYAN} the ${YELLOW}$role${CYAN} role $([ "$action" = "add" ] && echo "to" || echo "from") ${YELLOW}$username${CYAN} on ${YELLOW}$stack (all sites)${CYAN} has completed.${NC}"
+    echo "  Adding user $username on stack: $stack (all sites, env: $environment)..."
+    if drush ${full_alias} acsf-tools:mlc user:create "'$username' '--mail=${username}@asu.edu'" --no-interaction 2>&1; then
+      echo -e "  ${CYAN} [info] The attempt to add the user $username to all sites on $stack has completed.${NC}"
       echo -e "  ${YELLOW} [note] Please review the output above for any errors or warnings. Make note of any sites that may have failed to update, make adjustments and try again, or update them one-by-one (as appropriate).${NC}"
       return 0
     else
-      echo -e "  ${RED}✗ [error]${NC} Failed to $action $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on $stack (all sites)"
+      echo -e "  ${RED}✗ [error]${NC} Failed to add $username to all sites on $stack"
       return 1
     fi
   else
-    # Single site mode - use regular drush user role commands
-    echo "  $action_text $role role on stack: $stack (site_alias: $site_alias)..."
-    if drush ${site_alias} user:role:${action} $role $username --no-interaction 2>&1; then
-      echo -e "  ${GREEN}✓ [success]${NC} Successfully ${action}ed $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on '$stack' $site_alias"
+    # Single site mode - use regular drush user create commands
+    echo "  Adding $username on stack: $stack (site_alias: $site_alias)..."
+    if drush ${site_alias} user:create $username --mail=${username}@asu.edu --no-interaction 2>&1; then
+      echo -e "  ${GREEN}✓ [success]${NC} Successfully added user: $username on '$stack' $site_alias"
       return 0
     else
-      echo -e "  ${RED}✗ [error]${NC} Failed to $action $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on '$stack' $site_alias"
+      echo -e "  ${RED}✗ [error]${NC} Failed to add user: $username on '$stack' $site_alias"
       return 1
     fi
   fi
@@ -146,17 +126,11 @@ function get_available_stacks() {
   done < <(get_sorted_stack_keys)
 }
 
-# Get list of available roles
-function get_available_roles() {
-  printf '%s\n' "${ROLES[@]}"
-}
-
-
 # Print header
 function print_header() {
   echo ""
   echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗"
-  echo -e         "║      ASU Governance Role Manager - Interactive Wizard      ║"
+  echo -e         "║      ASU Governance Add User - Interactive Wizard          ║"
   echo -e         "║                     -------------                          ║"
   echo -e         "║               For use by ET Web Team only.                 ║"
   echo -e         "║      Requirements for use:                                 ║"
@@ -223,32 +197,14 @@ function get_text_input() {
 function run_wizard() {
   print_header
 
-  # Step 1: Ask what action to perform (add or remove)
+  # Step 1: Get username
   echo ""
-  local actions=("Add a role" "Remove a role")
-  print_menu "${YELLOW}Step 1: Would you like to add or remove a role?${NC}" "${actions[@]}"
-  local action_choice=$(get_menu_input "${YELLOW}Enter your choice:${NC} " "${#actions[@]}")
-  local action_text=$([ "$action_choice" -eq 1 ] && echo "add" || echo "remove")
+  local username=$(get_text_input "${YELLOW}Step 1: Enter the username (ASURITE Id):${NC} ")
 
-  # Step 2: Ask which role to manage (contextual question based on action)
-  echo ""
-  local action_verb=$([ "$action_choice" -eq 1 ] && echo "add" || echo "remove")
-  local roles=()
-  while IFS= read -r role; do
-    roles+=("$role")
-  done < <(get_available_roles)
-  print_menu "${YELLOW}Step 2: Which role would you like to $action_verb?${NC}" "${roles[@]}"
-  local role_choice=$(get_menu_input "${YELLOW}Enter your choice:${NC} " "${#roles[@]}")
-  local selected_role="${roles[$((role_choice - 1))]}"
-
-  # Step 3: Get username
-  echo ""
-  local username=$(get_text_input "${YELLOW}Step 3: Enter the username (ASURITE Id):${NC} ")
-
-  # Step 4: Ask if targeting single site or multiple sites
+  # Step 2: Ask if targeting single site or multiple sites
   echo ""
   local site_mode_options=("Single site" "Multiple sites")
-  print_menu "${YELLOW}Step 4: Are you targeting a single site or multiple sites?${NC}" "${site_mode_options[@]}"
+  print_menu "${YELLOW}Step 2: Are you targeting a single site or multiple sites?${NC}" "${site_mode_options[@]}"
   local site_mode_choice=$(get_menu_input "${YELLOW}Enter your choice:${NC} " "${#site_mode_options[@]}")
 
   local selected_stacks=()
@@ -257,7 +213,7 @@ function run_wizard() {
   if [ "$site_mode_choice" -eq 1 ]; then
     # Single site mode - skip stack selection, go directly to site alias input
     echo ""
-    site_alias=$(get_text_input "${YELLOW}Step 5: Enter the site alias (e.g. @websparkci.live, @self):${NC} ")
+    site_alias=$(get_text_input "${YELLOW}Step 3: Enter the site alias (e.g. @websparkci.live, @self):${NC} ")
     # For single site, we don't need to select stacks - it will use drush @{site_alias} directly
     # Set a placeholder to indicate single site mode
     selected_stacks=("single-site-mode")
@@ -272,9 +228,9 @@ function run_wizard() {
       return
     fi
 
-    # Step 5: Select stack(s)
+    # Step 3: Select stack(s)
     echo ""
-    echo -e "${YELLOW}Step 5: Select stack(s) to apply changes to all sites:${NC}"
+    echo -e "${YELLOW}Step 3: Select stack(s) to apply changes to all sites:${NC}"
     echo ""
     while IFS= read -r key; do
       echo " - ${STACKS[$key]} ($key)"
@@ -308,21 +264,21 @@ function run_wizard() {
       selected_stacks=("${STACKS[$stack_choice]}")
     fi
 
-    # site_alias remains empty, which triggers all-sites mode in manage_role()
+    # site_alias remains empty, which triggers all-sites mode in add_user()
 
-    # Step 6: Select environment
+    # Step 4: Select environment
     echo ""
     local environments=("live" "test" "dev")
-    print_menu "${YELLOW}Step 6: Which environment would you like to target? [default: ${DEFAULT_ENVIRONMENT}]${NC}" "${environments[@]}"
+    print_menu "${YELLOW}Step 4: Which environment would you like to target? [default: ${DEFAULT_ENVIRONMENT}]${NC}" "${environments[@]}"
     local env_choice=$(get_menu_input "${YELLOW}Enter your choice:${NC} " "${#environments[@]}")
     local selected_env="${environments[$((env_choice - 1))]}"
   fi
 
-  # Step 7 (for both flows): Confirm action
+  # Step 5 (for both flows): Confirm action
   echo ""
-  echo -e "${YELLOW}Step 7: Please review your selection:${NC}"
+  echo -e "${YELLOW}Step 5: Please review your selection:${NC}"
   echo ""
-  echo -ne "${CYAN}Are you sure you want to ${YELLOW}$action_text${CYAN} the ${YELLOW}$selected_role${CYAN} role for user ${YELLOW}$username${NC}"
+  echo -ne "${CYAN}Are you sure you want to ${YELLOW}add${CYAN} the user ${YELLOW}${username}${NC}"
 
   if [ "$site_mode_choice" -eq 1 ]; then
     # Single site mode
@@ -347,18 +303,18 @@ function run_wizard() {
     return
   fi
 
-  # Step 8: Execute action
+  # Step 6: Execute action
   echo ""
-  echo -e "${YELLOW}Step 8: Executing...${NC}"
+  echo -e "${YELLOW}Step 6: Executing...${NC}"
   echo ""
 
   if [ "$site_mode_choice" -eq 1 ]; then
     # Single site mode - execute directly with site alias, no stack needed
-    manage_role "$action_text" "$username" "$selected_role" "single-site" "$site_alias"
+    add_user "$username" "single-site" "$site_alias"
   else
     # Multiple sites mode - iterate through stacks, site_alias is empty (all sites)
     for stack in "${selected_stacks[@]}"; do
-      manage_role "$action_text" "$username" "$selected_role" "$stack" "" "$selected_env"
+      add_user "$username" "$stack" "" "$selected_env"
     done
   fi
 
@@ -372,12 +328,10 @@ function print_usage() {
   cat << EOF
 
 ╔════════════════════════════════════════════════════════════╗
-║     ASU Governance Role Manager - Usage Information        ║
+║        ASU Governance Add User - Usage Information         ║
 ╚════════════════════════════════════════════════════════════╝
 
 OPTIONS:
-  --action=<action>            Required. Action to perform: 'add' or 'remove'
-  --role=<role>                Required. Role to manage
   --username=<username>        Required. The username (ASURITE Id) to manage
   --stack=<stack_number>       Optional for single-site targets, required for 'allsites'.
                                Stack number (0 = all stacks, or a specific stack number).
@@ -386,13 +340,6 @@ OPTIONS:
                                Use special value 'allsites' to apply to all sites on the selected stack(s).
                                Note: For local environments, you must specify a site alias and cannot use 'allsites' or target multiple stacks.
   --help                       Display this help message
-
-AVAILABLE ROLES:
-EOF
-  for role in $(get_available_roles); do
-    echo "  - $role"
-  done
-  cat << EOF
 
 AVAILABLE STACKS:
 EOF
@@ -405,8 +352,6 @@ EOF
 
 # Parse command-line flags and execute
 function handle_flags() {
-  local role=""
-  local action=""
   local username=""
   local stack_index=""
   local site_alias=""  # No default - must be explicitly specified
@@ -416,14 +361,6 @@ function handle_flags() {
       --help|-h)
         print_usage
         exit 0
-        ;;
-      --role)
-        role="$2"
-        shift 2
-        ;;
-      --action)
-        action="$2"
-        shift 2
         ;;
       --username)
         username="$2"
@@ -445,9 +382,9 @@ function handle_flags() {
     esac
   done
 
-  # Validate that role, action, and username are provided
-  if [ -z "$role" ] || [ -z "$action" ] || [ -z "$username" ]; then
-    echo -e "${RED}✗ [error]${NC} --role, --action, and --username are required when using flags."
+  # Validate that username is provided
+  if [ -z "$username" ]; then
+    echo -e "${RED}✗ [error]${NC} --username is required when using flags."
     print_usage
     exit 1
   fi
@@ -457,28 +394,6 @@ function handle_flags() {
     echo -e "${RED}✗ [error]${NC} --site_alias is required when using flags."
     echo "  Use --site_alias allsites to apply to all sites on the selected stack(s),"
     echo "  or specify a site alias (e.g., --site_alias @mysite.dev, @self) for a specific site."
-    print_usage
-    exit 1
-  fi
-
-  # Validate role
-  local role_found=false
-  while IFS= read -r r; do
-    if [ "$r" = "$role" ]; then
-      role_found=true
-      break
-    fi
-  done < <(get_available_roles)
-
-  if [ "$role_found" = false ]; then
-    echo -e "${RED}✗ [error]${NC} Invalid role '$role'."
-    print_usage
-    exit 1
-  fi
-
-  # Validate action
-  if ! validate_action "$action"; then
-    echo -e "${RED}✗ [error]${NC} Invalid action '$action'. Must be 'add' or 'remove'."
     print_usage
     exit 1
   fi
@@ -518,11 +433,11 @@ function handle_flags() {
       exit 1
     fi
 
-    # Execute all-sites mode (site_alias empty triggers multi-site in manage_role)
+    # Execute all-sites mode (site_alias empty triggers multi-site in add_user)
     echo ""
     for s in "${target_stacks[@]}"; do
       echo "Processing user: $username on stack: $s (all sites)..."
-      manage_role "$action" "$username" "$role" "$s" ""
+      add_user "$username" "$s" ""
     done
     echo ""
   else
@@ -549,12 +464,22 @@ function handle_flags() {
     # Execute single-site mode
     echo ""
     echo "Processing user: $username on site: $site_alias..."
-    manage_role "$action" "$username" "$role" "$stack_label" "$site_alias"
+    add_user "$username" "$stack_label" "$site_alias"
     echo ""
   fi
 }
 
 # ========================== Main Script =============================
+
+# -------- Ensure SSH keys are synchronized --------
+# Capture the output of the command
+output=$(ddev drush @asufactory1.01live list 2>&1)
+
+# Check if the output contains the error message
+if echo "$output" | grep -q "Permission denied (publickey)"; then
+  echo "❌ SSH key synchronization failed. Please run 'ddev auth ssh' and try again."
+  exit 1
+fi
 
 authenticate || (printf "Failed to authenticate" && exit $?)
 
