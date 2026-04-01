@@ -55,6 +55,16 @@ function authenticate() {
   acli auth:acsf-login --username="${ACQUIA_ACSF_USERNAME}" --key="${ACQUIA_ACSF_KEY}" --factory-url="${ACQUIA_FACTORY_URL}"
 }
 
+# Validate that username contains only safe characters (alphanumeric, dots, hyphens, underscores)
+# and does not start with a dash, to prevent shell option injection.
+function validate_username() {
+  local username=$1
+  if [[ ! "$username" =~ ^[a-zA-Z0-9._-]+$ ]] || [[ "$username" == -* ]]; then
+    return 1
+  fi
+  return 0
+}
+
 # Validate that action is either "add" or "remove"
 function validate_action() {
   local action=$1
@@ -127,8 +137,13 @@ function manage_role() {
     fi
   else
     # Single site mode - use regular drush user role commands
+    # Validate username to prevent shell option injection
+    if ! validate_username "$username"; then
+      echo -e "  ${RED}✗ [error]${NC} Invalid username '$username'. Usernames must contain only alphanumeric characters, dots, hyphens, or underscores, and must not start with a dash."
+      return 1
+    fi
     echo "  $action_text $role role on stack: $stack (site_alias: $site_alias)..."
-    if drush ${site_alias} user:role:${action} $role $username --no-interaction 2>&1; then
+    if drush "${site_alias}" "user:role:${action}" "$role" "$username" --no-interaction 2>&1; then
       echo -e "  ${GREEN}✓ [success]${NC} Successfully ${action}ed $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on '$stack' $site_alias"
       return 0
     else
