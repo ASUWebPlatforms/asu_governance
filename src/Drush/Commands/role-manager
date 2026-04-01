@@ -3,12 +3,12 @@
 # It provides functions to add/remove administrator roles in Drupal using Drush.
 # Usage: ./role-manager                 [Interactive wizard mode]
 #        ./role-manager --help           [Show usage instructions]
-#        ./role-manager --action <add|remove> --username <username> --site_alias <site_alias> [--stack <stack>]
+#        ./role-manager --action <add|remove> --username <username> --site-alias <site_alias> [--stack <stack>]
 #
 # Examples:
-#   ./role-manager --action add --role administrator --username jdoe --site_alias @self              # Local single site (no stack needed)
-#   ./role-manager --action add --role administrator --username jdoe --site_alias @mysite.dev        # Remote single site (no stack needed)
-#   ./role-manager --action add --role administrator --username jdoe --site_alias allsites --stack 1 # All sites on a specific stack
+#   ./role-manager --action add --role administrator --username jdoe --site-alias @self              # Local single site (no stack needed)
+#   ./role-manager --action add --role administrator --username jdoe --site-alias @mysite.dev        # Remote single site (no stack needed)
+#   ./role-manager --action add --role administrator --username jdoe --site-alias allsites --stack 1 # All sites on a specific stack
 
 # ========================== Color Codes ====================================
 
@@ -108,6 +108,14 @@ function manage_role() {
   local environment=${6:-$DEFAULT_ENVIRONMENT}
 
   local action_text=$([ "$action" = "add" ] && echo "Adding" || echo "Removing")
+  # Resolve display label: if stack is a numeric key in STACKS, show its label; otherwise use as-is
+  local stack_label="${STACKS[$stack]:-$stack}"
+
+  # Validate username up front for both single-site and all-sites modes
+  if ! validate_username "$username"; then
+    echo -e "  ${RED}✗ [error]${NC} Invalid username '$username'. Usernames must contain only alphanumeric characters, dots, hyphens, or underscores, and must not start with a dash."
+    return 1
+  fi
 
   # Check if site_alias is specified (single site) or empty (all sites)
   if [ -z "$site_alias" ]; then
@@ -126,28 +134,23 @@ function manage_role() {
       stack_arg="--stack=${stack}"
     fi
 
-    echo "  $action_text $role role on stack: $stack (all sites, env: $environment)..."
-    if drush ${full_alias} acsf-tools:mlc user:role:${action} "'$role' '$username'" ${stack_arg} --no-interaction 2>&1; then
-      echo -e "  ${CYAN} [info] The attempt to ${YELLOW}${action}${CYAN} the ${YELLOW}$role${CYAN} role $([ "$action" = "add" ] && echo "to" || echo "from") ${YELLOW}$username${CYAN} on ${YELLOW}$stack (all sites)${CYAN} has completed.${NC}"
+    echo "  $action_text $role role on stack: $stack_label (all sites, env: $environment)..."
+    if drush "${full_alias}" acsf-tools:mlc user:role:${action} "'$role' '$username'" ${stack_arg:+"${stack_arg}"} --no-interaction 2>&1; then
+      echo -e "  ${CYAN} [info] The attempt to ${YELLOW}${action}${CYAN} the ${YELLOW}$role${CYAN} role $([ "$action" = "add" ] && echo "to" || echo "from") ${YELLOW}$username${CYAN} on ${YELLOW}$stack_label (all sites)${CYAN} has completed.${NC}"
       echo -e "  ${YELLOW} [note] Please review the output above for any errors or warnings. Make note of any sites that may have failed to update, make adjustments and try again, or update them one-by-one (as appropriate).${NC}"
       return 0
     else
-      echo -e "  ${RED}✗ [error]${NC} Failed to $action $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on $stack (all sites)"
+      echo -e "  ${RED}✗ [error]${NC} Failed to $action $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on $stack_label (all sites)"
       return 1
     fi
   else
     # Single site mode - use regular drush user role commands
-    # Validate username to prevent shell option injection
-    if ! validate_username "$username"; then
-      echo -e "  ${RED}✗ [error]${NC} Invalid username '$username'. Usernames must contain only alphanumeric characters, dots, hyphens, or underscores, and must not start with a dash."
-      return 1
-    fi
-    echo "  $action_text $role role on stack: $stack (site_alias: $site_alias)..."
+    echo "  $action_text $role role on stack: $stack_label (site_alias: $site_alias)..."
     if drush "${site_alias}" "user:role:${action}" "$role" "$username" --no-interaction 2>&1; then
-      echo -e "  ${GREEN}✓ [success]${NC} Successfully ${action}ed $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on '$stack' $site_alias"
+      echo -e "  ${GREEN}✓ [success]${NC} Successfully ${action}ed $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on '$stack_label' $site_alias"
       return 0
     else
-      echo -e "  ${RED}✗ [error]${NC} Failed to $action $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on '$stack' $site_alias"
+      echo -e "  ${RED}✗ [error]${NC} Failed to $action $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on '$stack_label' $site_alias"
       return 1
     fi
   fi
@@ -158,6 +161,12 @@ function manage_role() {
 # Get sorted stack keys (associative arrays are unordered, so sort numerically)
 function get_sorted_stack_keys() {
   printf '%s\n' "${!STACKS[@]}" | sort -n
+}
+
+# Get sorted stack keys excluding key 0 ("All stacks" meta-entry).
+# Use this when iterating to execute commands on actual stacks.
+function get_real_stack_keys() {
+  printf '%s\n' "${!STACKS[@]}" | sort -n | grep -v '^0$'
 }
 
 # Get list of available stacks (sorted by key)
@@ -181,7 +190,7 @@ function print_header() {
   echo -e         "║                     -------------                          ║"
   echo -e         "║               For use by ET Web Team only.                 ║"
   echo -e         "║      Requirements for use:                                 ║"
-  echo -e         "║        - appropriate SSH access permissions on Acqiua      ║"
+  echo -e         "║        - appropriate SSH access permissions on Acquia      ║"
   echo -e         "║        - Drush aliases for targeted sites                  ║"
   echo -e         "║          (Can be obtained via 'ddev asusf:aliases')        ║"
   echo -e         "╚════════════════════════════════════════════════════════════╝${NC}"
@@ -320,13 +329,13 @@ function run_wizard() {
     done
 
     if [ "$stack_choice" -eq 0 ]; then
-      # All stacks selected
+      # All stacks selected — exclude key 0 (the "All stacks" meta-entry)
       while IFS= read -r key; do
-        selected_stacks+=("${STACKS[$key]}")
-      done < <(get_sorted_stack_keys)
+        selected_stacks+=("$key")
+      done < <(get_real_stack_keys)
     else
       # Single stack selected
-      selected_stacks=("${STACKS[$stack_choice]}")
+      selected_stacks=("$stack_choice")
     fi
 
     # site_alias remains empty, which triggers all-sites mode in manage_role()
@@ -438,23 +447,43 @@ function handle_flags() {
         print_usage
         exit 0
         ;;
+      --role=*)
+        role="${1#*=}"
+        shift
+        ;;
       --role)
         role="$2"
         shift 2
+        ;;
+      --action=*)
+        action="${1#*=}"
+        shift
         ;;
       --action)
         action="$2"
         shift 2
         ;;
+      --username=*)
+        username="${1#*=}"
+        shift
+        ;;
       --username)
         username="$2"
         shift 2
+        ;;
+      --stack=*)
+        stack_index="${1#*=}"
+        shift
         ;;
       --stack)
         stack_index="$2"
         shift 2
         ;;
-      --site_alias)
+      --site_alias=*|--site-alias=*)
+        site_alias="${1#*=}"
+        shift
+        ;;
+      --site_alias|--site-alias)
         site_alias="$2"
         shift 2
         ;;
@@ -475,9 +504,9 @@ function handle_flags() {
 
   # Require explicit site_alias specification to match wizard mode's explicit choice
   if [ -z "$site_alias" ]; then
-    echo -e "${RED}✗ [error]${NC} --site_alias is required when using flags."
-    echo "  Use --site_alias allsites to apply to all sites on the selected stack(s),"
-    echo "  or specify a site alias (e.g., --site_alias @mysite.dev, @self) for a specific site."
+    echo -e "${RED}✗ [error]${NC} --site-alias is required when using flags."
+    echo "  Use --site-alias allsites to apply to all sites on the selected stack(s),"
+    echo "  or specify a site alias (e.g., --site-alias @mysite.dev, @self) for a specific site."
     print_usage
     exit 1
   fi
@@ -508,7 +537,7 @@ function handle_flags() {
   if [ "$site_alias" = "allsites" ]; then
     # All-sites mode: --stack is required
     if [ -z "$stack_index" ]; then
-      echo -e "${RED}✗ [error]${NC} --stack is required when using --site_alias allsites."
+      echo -e "${RED}✗ [error]${NC} --stack is required when using --site-alias allsites."
       print_usage
       exit 1
     fi
@@ -524,13 +553,13 @@ function handle_flags() {
     local target_stacks=()
 
     if [ "$stack_index" -eq 0 ]; then
-      # 0 means all stacks
+      # 0 means all stacks — exclude key 0 (the "All stacks" meta-entry)
       while IFS= read -r key; do
-        target_stacks+=("${STACKS[$key]}")
-      done < <(get_sorted_stack_keys)
+        target_stacks+=("$key")
+      done < <(get_real_stack_keys)
     elif [ -n "${STACKS[$stack_index]+x}" ]; then
-      # Valid stack key - look up directly in associative array
-      target_stacks=("${STACKS[$stack_index]}")
+      # Valid stack key - store the numeric key
+      target_stacks=("$stack_index")
     else
       local valid_keys
       valid_keys=$(get_sorted_stack_keys | tr '\n' ', ' | sed 's/,$//')
@@ -542,7 +571,7 @@ function handle_flags() {
     # Execute all-sites mode (site_alias empty triggers multi-site in manage_role)
     echo ""
     for s in "${target_stacks[@]}"; do
-      echo "Processing user: $username on stack: $s (all sites)..."
+      echo "Processing user: $username on stack: ${STACKS[$s]:-$s} (all sites)..."
       manage_role "$action" "$username" "$role" "$s" ""
     done
     echo ""

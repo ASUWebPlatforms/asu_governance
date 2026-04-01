@@ -4,6 +4,7 @@ namespace Drupal\asu_governance\Drush\Commands;
 
 use Drush\Attributes as CLI;
 use Drush\Commands\DrushCommands;
+use Symfony\Component\Process\Process;
 
 /**
  * A Drush commandfile.
@@ -19,7 +20,7 @@ final class AsuGovernanceCommands extends DrushCommands {
   #[CLI\Option(name: 'stack', description: 'Stack number (0 = all stacks, or a specific stack number)')]
   #[CLI\Option(name: 'site-alias', description: 'Site alias to target (format: @alias.env or @self). Use "allsites" to target all sites on the specified stack(s).')]
   #[CLI\Usage(name: 'asu_governance:role-manager (agrm)', description: 'Wizard mode: interactively prompts for options')]
-  #[CLI\Usage(name: 'asu_governance:role-manager (agrm) --action=add --role=administrator --username=jdoe --stack=1 site-alias=@websparkreleasestable.live', description: 'Adds the administrator role to user jdoe in the live environment for the webspark release stable site on stack 1')]
+  #[CLI\Usage(name: 'asu_governance:role-manager (agrm) --action=add --role=administrator --username=jdoe --stack=1 --site-alias=@websparkreleasestable.live', description: 'Adds the administrator role to user jdoe in the live environment for the webspark release stable site on stack 1')]
   #[CLI\Usage(name: 'asu_governance:role-manager (agrm) --action=remove --role=site_builder --username=jdoe --stack=3 --site-alias=allsites', description: 'Removes the site_builder role from user jdoe on all sites on stack 3')]
   public function roleManager(array $options = ['action' => NULL, 'role' => NULL, 'username' => NULL, 'stack' => NULL, 'site-alias' => NULL]) {
 
@@ -36,14 +37,9 @@ final class AsuGovernanceCommands extends DrushCommands {
       return self::EXIT_FAILURE;
     }
 
-    $command = $this->buildCommand($myOptions , 'role-manager');
+    $process = $this->buildProcess($myOptions, 'role-manager');
 
-    // passthru() outputs directly to the terminal and returns the exit status
-    $return_status = 0;
-    passthru($command, $return_status);
-    
-    // Return based on the command's exit status
-    return $return_status === 0 ? self::EXIT_SUCCESS : self::EXIT_FAILURE;
+    return $this->runProcess($process);
   }
 
   /**
@@ -54,7 +50,7 @@ final class AsuGovernanceCommands extends DrushCommands {
   #[CLI\Option(name: 'stack', description: 'Stack number (0 = all stacks, or a specific stack number)')]
   #[CLI\Option(name: 'site-alias', description: 'Site alias to target (format: @alias.env or @self). Use "allsites" to target all sites on the specified stack(s).')]
   #[CLI\Usage(name: 'asu_governance:add-user (agau)', description: 'Wizard mode: interactively prompts for options')]
-  #[CLI\Usage(name: 'asu_governance:add-user (agau) --username=jdoe --stack=1 site-alias=@websparkreleasestable.live', description: 'Adds user jdoe in the live environment for the webspark release stable site on stack 1')]
+  #[CLI\Usage(name: 'asu_governance:add-user (agau) --username=jdoe --stack=1 --site-alias=@websparkreleasestable.live', description: 'Adds user jdoe in the live environment for the webspark release stable site on stack 1')]
   #[CLI\Usage(name: 'asu_governance:add-user (agau) --username=jdoe --stack=3 --site-alias=allsites', description: 'Adds user jdoe on all sites on stack 3')]
   public function addUser(array $options = ['username' => NULL, 'stack' => NULL, 'site-alias' => NULL]) {
 
@@ -69,14 +65,9 @@ final class AsuGovernanceCommands extends DrushCommands {
       return self::EXIT_FAILURE;
     }
 
-    $command = $this->buildCommand($myOptions, 'add-user');
+    $process = $this->buildProcess($myOptions, 'add-user');
 
-    // passthru() outputs directly to the terminal and returns the exit status
-    $return_status = 0;
-    passthru($command, $return_status);
-
-    // Return based on the command's exit status
-    return $return_status === 0 ? self::EXIT_SUCCESS : self::EXIT_FAILURE;
+    return $this->runProcess($process);
   }
 
   private function validateOptions(array $myOptions): bool {
@@ -105,10 +96,9 @@ final class AsuGovernanceCommands extends DrushCommands {
 
     // Validate 'stack' option
     if ($myOptions['stack'] !== NULL) {
-      // convert to integer for validation
-      $myOptions['stack'] = (int)$myOptions['stack'];
-      // Ensure 'stack' is an integer or 0.
-      if (!is_numeric($myOptions['stack']) || $myOptions['stack'] < 0) {
+      $stackValue = (string) $myOptions['stack'];
+      // Ensure the raw value is a non-negative integer string before casting.
+      if (!ctype_digit($stackValue)) {
         $this->logger()->error('The "stack" option must be a non-negative integer.');
         return false;
       }
@@ -117,23 +107,53 @@ final class AsuGovernanceCommands extends DrushCommands {
     return true;
   }
 
-  private function buildCommand(array $myOptions, $func): string {
-    $module_path = \Drupal::service('extension.list.module')->getPath('asu_governance');
-    $file_dir = DRUPAL_ROOT . '/' . $module_path . '/src/Drush/Commands';
-    if ($func === 'role-manager' || $func === 'add-user') {
-      $command = "cd {$file_dir} && ./{$func}";
-    } else {
-      throw new \InvalidArgumentException('Invalid command specified for building the command string.');
+  /**
+   * Build a Symfony Process for the given script and options.
+   *
+   * Arguments are passed as an array, so they are never interpreted by a shell.
+   * This eliminates command-injection risk.
+   */
+  private function buildProcess(array $myOptions, string $func): Process {
+    if (!in_array($func, ['role-manager', 'add-user'], TRUE)) {
+      throw new \InvalidArgumentException('Invalid command specified for building the process.');
     }
 
+    $module_path = \Drupal::service('extension.list.module')->getPath('asu_governance');
+    $file_dir = DRUPAL_ROOT . '/' . $module_path . '/src/Drush/Commands';
+
+    $command = ['./' . $func];
 
     foreach ($myOptions as $key => $value) {
-      if (!is_null($value)) {
-        $command .= " --$key " . $value;
+      if ($value !== NULL) {
+        $command[] = '--' . $key;
+        $command[] = (string) $value;
       }
     }
 
-    return $command;
+    $process = new Process($command, $file_dir);
+    $process->setTimeout(NULL);
+
+    return $process;
+  }
+
+  /**
+   * Execute a Process, streaming output to the terminal in real time.
+   *
+   * Uses TTY mode when available (full interactive support), otherwise
+   * falls back to streaming stdout/stderr via a callback.
+   */
+  private function runProcess(Process $process): int {
+    if (Process::isTtySupported()) {
+      $process->setTty(TRUE);
+      $process->run();
+    }
+    else {
+      $process->run(function ($type, $buffer) {
+        echo $buffer;
+      });
+    }
+
+    return $process->isSuccessful() ? self::EXIT_SUCCESS : self::EXIT_FAILURE;
   }
 
 }
