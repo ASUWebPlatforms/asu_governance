@@ -110,8 +110,14 @@ function manage_role() {
       return 1
     fi
 
+    # If a specific stack was selected (non-zero), pass it through to acsf-tools:mlc
+    local stack_arg=""
+    if [ -n "$stack" ] && [ "$stack" != "0" ]; then
+      stack_arg="--stack=${stack}"
+    fi
+
     echo "  $action_text $role role on stack: $stack (all sites, env: $environment)..."
-    if drush ${full_alias} acsf-tools:mlc user:role:${action} "'$role' '$username'" --no-interaction 2>&1; then
+    if drush ${full_alias} acsf-tools:mlc user:role:${action} "'$role' '$username'" ${stack_arg} --no-interaction 2>&1; then
       echo -e "  ${CYAN} [info] The attempt to ${YELLOW}${action}${CYAN} the ${YELLOW}$role${CYAN} role $([ "$action" = "add" ] && echo "to" || echo "from") ${YELLOW}$username${CYAN} on ${YELLOW}$stack (all sites)${CYAN} has completed.${NC}"
       echo -e "  ${YELLOW} [note] Please review the output above for any errors or warnings. Make note of any sites that may have failed to update, make adjustments and try again, or update them one-by-one (as appropriate).${NC}"
       return 0
