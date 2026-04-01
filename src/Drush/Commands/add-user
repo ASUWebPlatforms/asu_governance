@@ -471,14 +471,16 @@ function handle_flags() {
 
 # ========================== Main Script =============================
 
-# -------- Ensure SSH keys are synchronized --------
-# Capture the output of the command
-output=$(ddev drush @asufactory1.01live list 2>&1)
+# -------- Ensure SSH keys are synchronized (when DDEV is available) --------
+if command -v ddev >/dev/null 2>&1; then
+  # Capture the output of the command
+  output=$(ddev drush @asufactory1.01live list 2>&1)
 
-# Check if the output contains the error message
-if echo "$output" | grep -q "Permission denied (publickey)"; then
-  echo "❌ SSH key synchronization failed. Please run 'ddev auth ssh' and try again."
-  exit 1
+  # Check if the output contains the error message
+  if echo "$output" | grep -q "Permission denied (publickey)"; then
+    echo "❌ SSH key synchronization failed. Please run 'ddev auth ssh' and try again."
+    exit 1
+  fi
 fi
 
 authenticate || (printf "Failed to authenticate" && exit $?)
