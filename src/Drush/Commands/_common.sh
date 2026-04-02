@@ -5,9 +5,11 @@
 
 # ========================== Paths ===========================================
 
-# Resolve project root from this file's location (src/Drush/Commands/_common.sh → project root)
-COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${COMMON_DIR}/../../.." && pwd)"
+# Use PROJECT_ROOT from the environment (set by AsuGovernanceCommands.php) when
+# available.  Fall back to git for standalone / local usage.
+if [ -z "${PROJECT_ROOT:-}" ]; then
+  PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+fi
 
 # ========================== Color Codes ====================================
 
@@ -54,6 +56,15 @@ declare -A STACK_ALIAS_DOWNLOAD_HINTS=(
   [1]="Webspark Stack"
   [3]="ASU Drupal Stack"
   [4]="Webspark Stack Drupal 9"
+)
+
+# Maps stack number → Acquia Cloud application UUID.
+# Used to pass --cloud-app-uuid to acli, which avoids interactive prompts and
+# caching issues.  Retrieve UUIDs with: acli api:applications:list
+declare -A STACK_APP_UUIDS=(
+  [1]="ed6ba37d-8d64-4a45-8d89-78f9460cf550"
+  [3]="6c63152a-3c87-4295-8999-8c3f6b03ae30"
+  [4]="e64e5765-54f4-4b6e-9b12-8c4071f2067e"
 )
 
 # Define available roles to manage
@@ -153,6 +164,13 @@ function cleanup_alias_file() {
 # Uses PROJECT_ROOT to resolve paths, since the script may run from a
 # different working directory (e.g., src/Drush/Commands/).
 function ensure_alias_files() {
+  # Skip alias file checks if the repository is not a stack environment.
+  local repo_url
+  repo_url="$(git -C "$PROJECT_ROOT" remote get-url origin 2>/dev/null || true)"
+  if [[ "$repo_url" != *"asufactory"* ]]; then
+    return 0
+  fi
+
   # First, collect missing keys into an array (avoid running interactive
   # commands inside a piped while-read loop, which steals stdin).
   local missing_keys=()
@@ -168,13 +186,21 @@ function ensure_alias_files() {
     local alias_file="${STACK_ALIAS_FILES[$key]}"
     local abs_alias_file="${PROJECT_ROOT}/${alias_file}"
     local hint="${STACK_ALIAS_DOWNLOAD_HINTS[$key]}"
+    local app_uuid="${STACK_APP_UUIDS[$key]:-}"
 
-    echo -e "\n❌ ${RED}Alias file ${YELLOW}$alias_file${RED} not found.${NC}"
-    echo -e "${GREEN}  Running ${YELLOW}acli remote:aliases:download${GREEN} to obtain it..."
-    echo -e "${GREEN}  When prompted, please select '${NC}[${YELLOW}9${NC}] Drush 9+ / Drupal 8+ (YAML)${GREEN}' as the Drush version."
-    echo -e "${GREEN}  Also, please select '${NC}${YELLOW}${hint}${NC}${GREEN}' for the Cloud Platform application\n${NC}"
-    # Run acli from the project root so aliases are downloaded to drush/sites/
-    (cd "$PROJECT_ROOT" && acli remote:aliases:download) < /dev/tty
+    echo -e "\n${RED}Alias file ${YELLOW}$alias_file${RED} not found.${NC}"
+
+    if [ -n "$app_uuid" ]; then
+      # Non-interactive: pass the application UUID directly to avoid caching
+      # and prompt issues when looping over multiple stacks.
+      echo -e "${GREEN}  Downloading alias for ${YELLOW}${hint}${GREEN}...${NC}"
+      (cd "$PROJECT_ROOT" && acli remote:aliases:download "$app_uuid" --no-interaction)
+    else
+      echo -e "${RED}  The alias file for ${YELLOW}${hint}${RED} is missing, and we don't have an application UUID to download it non-interactively.${NC}"
+      echo -e "${CYAN}  Please run the following command to download the missing alias file, then re-run this script:${NC}"
+      echo -e "${CYAN}    'acli remote:aliases:download'${NC}"
+    fi
+
     cleanup_alias_file "$abs_alias_file"
   done
 }

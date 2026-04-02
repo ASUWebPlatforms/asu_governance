@@ -130,7 +130,13 @@ final class AsuGovernanceCommands extends DrushCommands {
       }
     }
 
-    $process = new Process($command, $file_dir);
+    // Compute the correct PROJECT_ROOT regardless of the runtime environment
+    // (local host vs. Docker container).
+    $project_root = dirname(DRUPAL_ROOT);
+
+    $process = new Process($command, $file_dir, [
+      'PROJECT_ROOT' => $project_root,
+    ] + getenv());
     $process->setTimeout(NULL);
 
     return $process;
