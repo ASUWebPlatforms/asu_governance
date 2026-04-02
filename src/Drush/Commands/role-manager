@@ -1,0 +1,456 @@
+#!/bin/bash
+# This script is used to manage Drupal roles and permissions.
+# It provides functions to add/remove administrator roles in Drupal using Drush.
+# Usage: ./role-manager                 [Interactive wizard mode]
+#        ./role-manager --help           [Show usage instructions]
+#        ./role-manager --action <add|remove> --username <username> --site-alias <site_alias> [--stack <stack>]
+#
+# Examples:
+#   ./role-manager --action add --role administrator --username jdoe --site-alias @self              # Local single site (no stack needed)
+#   ./role-manager --action add --role administrator --username jdoe --site-alias @mysite.dev        # Remote single site (no stack needed)
+#   ./role-manager --action add --role administrator --username jdoe --site-alias allsites --stack 1 # All sites on a specific stack
+
+# ========================== Source shared code ==============================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/_common.sh"
+
+# ========================== Core Function ===================================
+
+# Function to manage (add/remove) a role for a user
+function manage_role() {
+  local action=$1
+  local username=$2
+  local role=$3
+  local stack=$4
+  local site_alias=$5
+  local environment=${6:-$DEFAULT_ENVIRONMENT}
+
+  local action_text=$([ "$action" = "add" ] && echo "Adding" || echo "Removing")
+  # Resolve display label: if stack is a numeric key in STACKS, show its label; otherwise use as-is
+  local stack_label="${STACKS[$stack]:-$stack}"
+
+  # Validate username up front for both single-site and all-sites modes
+  if ! validate_username "$username"; then
+    echo -e "  ${RED}✗ [error]${NC} Invalid username '$username'. Usernames must contain only alphanumeric characters, dots, hyphens, or underscores, and must not start with a dash."
+    return 1
+  fi
+
+  # Check if site_alias is specified (single site) or empty (all sites)
+  if [ -z "$site_alias" ]; then
+    # All sites mode - build per-stack alias from STACK_ALIASES
+    build_stack_alias "$stack" "$environment"
+    local full_alias="$BUILD_STACK_ALIAS_RESULT"
+    if [ -z "$full_alias" ]; then
+      echo -e "  ${RED}✗ [error]${NC} No alias configured for stack '$stack'."
+      return 1
+    fi
+
+    # Validate that full_alias is not a local environment
+    if ! validate_env_not_local "$full_alias"; then
+      echo -e "  ${RED}✗ [error]${NC} Cannot apply changes to all sites on a local environment."
+      echo "  Please specify a specific site alias for local development."
+      return 1
+    fi
+
+    echo "  $action_text $role role on stack: $stack_label (all sites, env: $environment)..."
+    if drush "${full_alias}" acsf-tools:mlc user:role:${action} "'$role' '$username'" --no-interaction 2>&1; then
+      echo -e "${BLACK}${CYAN_BG}[info]${CYAN} The attempt to ${YELLOW}${action}${CYAN} the ${YELLOW}$role${CYAN} role $([ "$action" = "add" ] && echo "to" || echo "from") the user ${YELLOW}$username${CYAN} in "
+      echo -e "  ${YELLOW}all sites ${CYAN}on ${YELLOW}stack ${stack}: ${stack_label}${CYAN} in the ${YELLOW}${environment}${CYAN} environment has completed.${NC}"
+      echo " "
+      echo -e "${BLACK}${YELLOW_BG}[note]${YELLOW} Please review the output above for any errors or warnings. Make note of any sites that may"
+      echo -e "  have failed to update, make adjustments and try again, or update them one-by-one (as appropriate).${NC}"
+      return 0
+    else
+      echo -e "  ${RED}✗ [error]${NC} Failed to $action $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on $stack_label (all sites)"
+      return 1
+    fi
+  else
+    # Single site mode - use regular drush user role commands
+    echo "  $action_text $role role on stack: $stack_label (site_alias: $site_alias)..."
+    if drush "${site_alias}" "user:role:${action}" "$role" "$username" --no-interaction 2>&1; then
+      echo -e "  ${GREEN}✓ [success]${NC} Successfully $([ "$action" = "add" ] && echo "added" || echo "removed") $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on '$stack_label' $site_alias"
+      return 0
+    else
+      echo -e "  ${RED}✗ [error]${NC} Failed to $action $role role $([ "$action" = "add" ] && echo "to" || echo "from") user: $username on '$stack_label' $site_alias"
+      return 1
+    fi
+  fi
+}
+
+# ========================== Wizard UI =======================================
+
+# Print header
+function print_header() {
+  echo ""
+  echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗"
+  echo -e         "║      ASU Governance Role Manager - Interactive Wizard      ║"
+  echo -e         "║                     -------------                          ║"
+  echo -e         "║               For use by ET Web Team only.                 ║"
+  echo -e         "║      Requirements for use:                                 ║"
+  echo -e         "║        - appropriate SSH access permissions on Acquia      ║"
+  echo -e         "║        - Drush aliases for targeted sites                  ║"
+  echo -e         "║          (Can be obtained via 'ddev asusf:aliases')        ║"
+  echo -e         "╚════════════════════════════════════════════════════════════╝${NC}"
+}
+
+# ========================== Wizard Flow Functions ============================
+
+# Main wizard flow
+function run_wizard() {
+  print_header
+
+  # Step 1: Ask what action to perform (add or remove)
+  echo ""
+  local actions=("Add a role" "Remove a role")
+  print_menu "${YELLOW}Step 1: Would you like to add or remove a role?${NC}" "${actions[@]}"
+  local action_choice=$(get_menu_input "${YELLOW}Enter your choice:${NC} " "${#actions[@]}")
+  local action_text=$([ "$action_choice" -eq 1 ] && echo "add" || echo "remove")
+
+  # Step 2: Ask which role to manage (contextual question based on action)
+  echo ""
+  local action_verb=$([ "$action_choice" -eq 1 ] && echo "add" || echo "remove")
+  local roles=()
+  while IFS= read -r role; do
+    roles+=("$role")
+  done < <(get_available_roles)
+  print_menu "${YELLOW}Step 2: Which role would you like to $action_verb?${NC}" "${roles[@]}"
+  local role_choice=$(get_menu_input "${YELLOW}Enter your choice:${NC} " "${#roles[@]}")
+  local selected_role="${roles[$((role_choice - 1))]}"
+
+  # Step 3: Get username
+  echo ""
+  local username=$(get_text_input "${YELLOW}Step 3: Enter the username (ASURITE Id):${NC} ")
+
+  # Step 4: Ask if targeting single site or multiple sites
+  echo ""
+  local site_mode_options=("Single site" "Multiple sites")
+  print_menu "${YELLOW}Step 4: Are you targeting a single site or multiple sites?${NC}" "${site_mode_options[@]}"
+  local site_mode_choice=$(get_menu_input "${YELLOW}Enter your choice:${NC} " "${#site_mode_options[@]}")
+
+  local selected_stacks=()
+  local site_alias=""
+
+  if [ "$site_mode_choice" -eq 1 ]; then
+    # Single site mode - skip stack selection, go directly to site alias input
+    echo ""
+    site_alias=$(get_text_input "${YELLOW}Step 5: Enter the site alias (e.g. @websparkci.live, @self):${NC} ")
+    # For single site, we don't need to select stacks - it will use drush @{site_alias} directly
+    # Set a placeholder to indicate single site mode
+    selected_stacks=("single-site-mode")
+  else
+    # Multiple sites mode - select stack(s) and apply to all sites on those stacks
+
+    # Step 5: Select stack(s)
+    echo ""
+    echo -e "${YELLOW}Step 5: Select stack(s) to apply changes to all sites:${NC}"
+    echo ""
+    while IFS= read -r key; do
+      echo " - ${STACKS[$key]} ($key)"
+    done < <(get_sorted_stack_keys)
+    echo ""
+
+    # Get stack selection - validate against actual stack keys
+    local stack_choice=""
+    while true; do
+      echo -ne "${YELLOW}Enter stack number:${NC} " >&2
+      read -r stack_choice < /dev/tty
+
+      if [[ "$stack_choice" =~ ^[0-9]+$ ]]; then
+        if [ "$stack_choice" -eq 0 ] || [ -n "${STACKS[$stack_choice]+x}" ]; then
+          break
+        fi
+      fi
+      local valid_keys
+      valid_keys=$(get_sorted_stack_keys | tr '\n' ', ' | sed 's/,$//')
+      echo -e "${RED}✗ [error]${NC} Invalid selection. Enter a valid stack number ($valid_keys) or 0 for all stacks." >&2
+      echo "" >&2
+    done
+
+    if [ "$stack_choice" -eq 0 ]; then
+      # All stacks selected — exclude key 0 (the "All stacks" meta-entry)
+      while IFS= read -r key; do
+        selected_stacks+=("$key")
+      done < <(get_real_stack_keys)
+    else
+      # Single stack selected
+      selected_stacks=("$stack_choice")
+    fi
+
+    # Step 6: Select environment
+    echo ""
+    local environments=("live" "test" "dev")
+    print_menu "${YELLOW}Step 6: Which environment would you like to target? [default: ${DEFAULT_ENVIRONMENT}]${NC}" "${environments[@]}"
+    local env_choice=$(get_menu_input "${YELLOW}Enter your choice:${NC} " "${#environments[@]}")
+    local selected_env="${environments[$((env_choice - 1))]}"
+  fi
+
+  # Step 7: Confirm action
+  echo ""
+  echo -e "${YELLOW}Step 7: Please review your selection:${NC}"
+  echo ""
+  echo -ne "${CYAN}Are you sure you want to ${YELLOW}$action_text${CYAN} the ${YELLOW}$selected_role${CYAN} role for user ${YELLOW}$username${NC}"
+
+  if [ "$site_mode_choice" -eq 1 ]; then
+    echo -e " ${CYAN}on site: ${YELLOW}$site_alias${NC}"
+  else
+    echo -e " ${CYAN}on the following:${NC}"
+    echo -e "${YELLOW}  - ${STACKS[$stack_choice]} (all sites, environment: $selected_env)\n${NC}"
+  fi
+
+  echo -ne "${CYAN}Do you want to continue? (yes/no) [${YELLOW}yes${CYAN}]:${NC} "
+  read -r response < /dev/tty
+
+  # Default to 'yes' if user just presses Enter
+  if [ -z "$response" ]; then
+    response="yes"
+  fi
+
+  # Accept 'y', 'Y', or any variation of 'yes' (case-insensitive)
+  if ! [[ "$response" =~ ^[Yy]([Ee][Ss])?$ ]]; then
+    echo -e "${RED}✗ [error]${NC} Action cancelled."
+    echo ""
+    return
+  fi
+
+  # Step 8: Execute action
+  echo ""
+  echo -e "${YELLOW}Step 8: Executing...${NC}"
+  echo ""
+
+  if [ "$site_mode_choice" -eq 1 ]; then
+    # Single site mode - execute directly with site alias, no stack needed
+    manage_role "$action_text" "$username" "$selected_role" "single-site" "$site_alias"
+  else
+    # Multiple sites mode - iterate through stacks, site_alias is empty (all sites)
+    for stack in "${selected_stacks[@]}"; do
+      manage_role "$action_text" "$username" "$selected_role" "$stack" "" "$selected_env"
+    done
+  fi
+
+  echo ""
+}
+
+# ========================== Flag Parsing & Help =============================
+
+# Print usage information
+function print_usage() {
+  cat << EOF
+
+╔════════════════════════════════════════════════════════════╗
+║     ASU Governance Role Manager - Usage Information        ║
+╚════════════════════════════════════════════════════════════╝
+
+OPTIONS:
+  --action=<action>            Required. Action to perform: 'add' or 'remove'
+  --role=<role>                Required. Role to manage
+  --username=<username>        Required. The username (ASURITE Id) to manage
+  --stack=<stack_number>       Optional for single-site targets, required for 'allsites'.
+                               Stack number (0 = all stacks, or a specific stack number).
+                               Not needed when --site-alias is a specific site (e.g., @self).
+  --site-alias=<alias>         Required. Site alias (e.g., @alias.env, @self).
+                               Use special value 'allsites' to apply to all sites on the selected stack(s).
+                               Note: For local environments, you must specify a site alias and cannot use 'allsites' or target multiple stacks.
+  --help                       Display this help message
+
+AVAILABLE ROLES:
+EOF
+  for role in $(get_available_roles); do
+    echo "  - $role"
+  done
+  cat << EOF
+
+AVAILABLE STACKS:
+EOF
+  while IFS= read -r key; do
+    echo "  $key. ${STACKS[$key]}"
+  done < <(get_sorted_stack_keys)
+  cat << EOF
+EOF
+}
+
+# Parse command-line flags and execute
+function handle_flags() {
+  local role=""
+  local action=""
+  local username=""
+  local stack_index=""
+  local site_alias=""
+
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --help|-h)
+        print_usage
+        exit 0
+        ;;
+      --role=*)
+        role="${1#*=}"
+        shift
+        ;;
+      --role)
+        role="$2"
+        shift 2
+        ;;
+      --action=*)
+        action="${1#*=}"
+        shift
+        ;;
+      --action)
+        action="$2"
+        shift 2
+        ;;
+      --username=*)
+        username="${1#*=}"
+        shift
+        ;;
+      --username)
+        username="$2"
+        shift 2
+        ;;
+      --stack=*)
+        stack_index="${1#*=}"
+        shift
+        ;;
+      --stack)
+        stack_index="$2"
+        shift 2
+        ;;
+      --site_alias=*|--site-alias=*)
+        site_alias="${1#*=}"
+        shift
+        ;;
+      --site_alias|--site-alias)
+        site_alias="$2"
+        shift 2
+        ;;
+      *)
+        echo -e "${RED}✗ [error]${NC} Unknown option: $1"
+        print_usage
+        exit 1
+        ;;
+    esac
+  done
+
+  # Validate that role, action, and username are provided
+  if [ -z "$role" ] || [ -z "$action" ] || [ -z "$username" ]; then
+    echo -e "${RED}✗ [error]${NC} --role, --action, and --username are required when using flags."
+    print_usage
+    exit 1
+  fi
+
+  # Require explicit site_alias specification to match wizard mode's explicit choice
+  if [ -z "$site_alias" ]; then
+    echo -e "${RED}✗ [error]${NC} --site-alias is required when using flags."
+    echo "  Use --site-alias allsites to apply to all sites on the selected stack(s),"
+    echo "  or specify a site alias (e.g., --site-alias @mysite.dev, @self) for a specific site."
+    print_usage
+    exit 1
+  fi
+
+  # Validate role
+  local role_found=false
+  while IFS= read -r r; do
+    if [ "$r" = "$role" ]; then
+      role_found=true
+      break
+    fi
+  done < <(get_available_roles)
+
+  if [ "$role_found" = false ]; then
+    echo -e "${RED}✗ [error]${NC} Invalid role '$role'."
+    print_usage
+    exit 1
+  fi
+
+  # Validate action
+  if ! validate_action "$action"; then
+    echo -e "${RED}✗ [error]${NC} Invalid action '$action'. Must be 'add' or 'remove'."
+    print_usage
+    exit 1
+  fi
+
+  # Determine site to use based on site_alias value
+  if [ "$site_alias" = "allsites" ]; then
+    # All-sites mode: --stack is required
+    if [ -z "$stack_index" ]; then
+      echo -e "${RED}✗ [error]${NC} --stack is required when using --site-alias allsites."
+      print_usage
+      exit 1
+    fi
+
+    # Validate stack_index is a number
+    if ! [[ "$stack_index" =~ ^[0-9]+$ ]]; then
+      echo -e "${RED}✗ [error]${NC} Invalid stack index '$stack_index'. Must be a number (0 for all stacks, 1-N for specific stack)."
+      print_usage
+      exit 1
+    fi
+
+    # Determine stacks to use based on stack_index
+    local target_stacks=()
+
+    if [ "$stack_index" -eq 0 ]; then
+      # 0 means all stacks — exclude key 0 (the "All stacks" meta-entry)
+      while IFS= read -r key; do
+        target_stacks+=("$key")
+      done < <(get_real_stack_keys)
+    elif [ -n "${STACKS[$stack_index]+x}" ]; then
+      # Valid stack key - store the numeric key
+      target_stacks=("$stack_index")
+    else
+      local valid_keys
+      valid_keys=$(get_sorted_stack_keys | tr '\n' ', ' | sed 's/,$//')
+      echo -e "${RED}✗ [error]${NC} Invalid stack number '$stack_index'. Valid stack numbers are: $valid_keys (or 0 for all stacks)."
+      print_usage
+      exit 1
+    fi
+
+    # Execute all-sites mode (site_alias empty triggers multi-site in manage_role)
+    echo ""
+    for s in "${target_stacks[@]}"; do
+      echo "Processing user: $username on stack: ${STACKS[$s]:-$s} (all sites)..."
+      manage_role "$action" "$username" "$role" "$s" ""
+    done
+    echo ""
+  else
+    # Single-site mode: --stack is optional (defaults to "local" label)
+    local stack_label="local"
+    if [ -n "$stack_index" ]; then
+      # Stack was provided — validate and use it for the label
+      if ! [[ "$stack_index" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}✗ [error]${NC} Invalid stack index '$stack_index'. Must be a number (0 for all stacks, 1-N for specific stack)."
+        print_usage
+        exit 1
+      fi
+      if [ -n "${STACKS[$stack_index]+x}" ]; then
+        stack_label="${STACKS[$stack_index]}"
+      else
+        local valid_keys
+        valid_keys=$(get_sorted_stack_keys | tr '\n' ', ' | sed 's/,$//')
+        echo -e "${RED}✗ [error]${NC} Invalid stack number '$stack_index'. Valid stack numbers are: $valid_keys (or 0 for all stacks)."
+        print_usage
+        exit 1
+      fi
+    fi
+
+    # Execute single-site mode
+    echo ""
+    echo "Processing user: $username on site: $site_alias..."
+    manage_role "$action" "$username" "$role" "$stack_label" "$site_alias"
+    echo ""
+  fi
+}
+
+# ========================== Main Script =============================
+
+check_ssh_connectivity
+authenticate || (printf "Failed to authenticate" && exit $?)
+ensure_alias_files
+
+# Check if any arguments were provided
+if [ $# -eq 0 ]; then
+  # No arguments - run interactive wizard
+  run_wizard
+else
+  # Arguments provided - parse them as flags
+  handle_flags "$@"
+fi
