@@ -9,7 +9,9 @@
         "drupal/purge": "^3.6",
         "drupal/acquia_purge": "^1.5",
         "drupal/simple_sitemap": "^4.2",
-        "drupal/admin_toolbar": "^3.5",
+        "drupal/admin_toolbar": "^3.5"
+    },
+    "require-dev": {
         "acquia/acsf-tools": "11.0.1"
     },
     "config": {
