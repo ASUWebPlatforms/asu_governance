@@ -89,8 +89,9 @@ function print_header() {
   echo -e         "║               For use by ET Web Team only.                 ║"
   echo -e         "║      Requirements for use:                                 ║"
   echo -e         "║        - appropriate SSH access permissions on Acquia      ║"
-  echo -e         "║        - Drush aliases for targeted sites                  ║"
-  echo -e         "║          (Can be obtained via 'ddev asusf:aliases')        ║"
+  echo -e         "║        - Drush aliases for targeted sites/stacks           ║"
+  echo -e         "║          (Can be obtained via 'ddev asusf:aliases'         ║"
+  echo -e         "║           or 'acli remote:aliases:download')               ║"
   echo -e         "╚════════════════════════════════════════════════════════════╝${NC}"
 }
 
