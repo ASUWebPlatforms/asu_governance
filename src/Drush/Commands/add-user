@@ -28,7 +28,7 @@ function add_user() {
 
   # Validate username up front for both single-site and all-sites modes
   if ! validate_username "$username"; then
-    echo -e "  ${RED}✗ [error]${NC} Invalid username '$username'. Usernames must contain only alphanumeric characters, dots, hyphens, or underscores, and must not start with a dash."
+    echo -e "  ${RED}✗ [error]${NC} Invalid username '$username'. Usernames must contain only alphanumeric characters."
     return 1
   fi
 

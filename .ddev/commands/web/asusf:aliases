@@ -1,5 +1,9 @@
 #!/bin/bash
 ##
+## NOTE: This is a copy of the asusf:aliases command in the webspark stacks. It is only included here
+## to enable local development and testing. The command needs to be installed in whatever project uses
+## the Drush commands made available in the asu_governance module.
+##
 ## Usage: asusf:aliases
 ## Description: Generate all Drush aliases for ASU Site Factory stacks
 ##

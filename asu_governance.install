@@ -27,8 +27,6 @@ function asu_governance_install() {
       ->changeSuperAdmin();
     \Drupal::messenger()
       ->addMessage('The SuperAdmin account has been secured. If you have been logged out, please log in again.');
-    \Drupal::messenger()
-      ->addMessage('If you are an ET Web Team member, please use Drush to grant yourself the Administrator role.');
   }
   catch (Exception $e) {
     \Drupal::logger('asu_secure_superadmin')->error($e->getMessage());
