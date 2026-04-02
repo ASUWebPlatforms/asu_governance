@@ -51,8 +51,11 @@ function add_user() {
 
     echo "  Adding user $username on stack: $stack_label (all sites, env: $environment)..."
     if drush "${full_alias}" acsf-tools:mlc user:create "'$username' '--mail=${username}@asu.edu'" --no-interaction 2>&1; then
-      echo -e "  ${CYAN} [info] The attempt to ${YELLOW}add${CYAN} the user ${YELLOW}$username${CYAN} to ${YELLOW}all sites${CYAN} on ${YELLOW}stack ${stack}: ${stack_label}${CYAN} in the ${YELLOW}${environment}${CYAN} environment has completed.${NC}"
-      echo -e "  ${YELLOW} [note] Please review the output above for any errors or warnings. Make note of any sites that may have failed to update, make adjustments and try again, or update them one-by-one (as appropriate).${NC}"
+      echo -e "${BLACK}${CYAN_BG}[info]${CYAN} The attempt to ${YELLOW}add${CYAN} the user ${YELLOW}$username${CYAN} to ${YELLOW}all sites${CYAN} on ${YELLOW}stack ${stack}: ${stack_label}"
+      echo -e "  ${CYAN}in the ${YELLOW}${environment}${CYAN} environment has completed.${NC}"
+      echo " "
+      echo -e "${BLACK}${YELLOW_BG}[note]${YELLOW} Please review the output above for any errors or warnings. Make note of any sites that may"
+      echo -e "  have failed to update, make adjustments and try again, or update them one-by-one (as appropriate).${NC}"
       return 0
     else
       echo -e "  ${RED}✗ [error]${NC} Failed to add $username to all sites on $stack_label"
