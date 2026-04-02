@@ -1,0 +1,372 @@
+#!/bin/bash
+# This script is used to add a user to a Drupal site.
+# It provides functions to add a user in Drupal using Drush.
+# Usage: ./add-user                 [Interactive wizard mode]
+#        ./add-user --help           [Show usage instructions]
+#        ./add-user --username <username> --site-alias <site_alias> [--stack <stack>]
+#
+# Examples:
+#   ./add-user --username jdoe --site-alias @self              # Local single site (no stack needed)
+#   ./add-user --username jdoe --site-alias @mysite.dev        # Remote single site (no stack needed)
+#   ./add-user --username jdoe --site-alias allsites --stack 1 # All sites on a specific stack
+
+# ========================== Source shared code ==============================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/_common.sh"
+
+# ========================== Core Function ===================================
+
+# Function to manage add a user
+function add_user() {
+  local username=$1
+  local stack=$2
+  local site_alias=$3
+  local environment=${4:-$DEFAULT_ENVIRONMENT}
+  # Resolve display label: if stack is a numeric key in STACKS, show its label; otherwise use as-is
+  local stack_label="${STACKS[$stack]:-$stack}"
+
+  # Validate username up front for both single-site and all-sites modes
+  if ! validate_username "$username"; then
+    echo -e "  ${RED}✗ [error]${NC} Invalid username '$username'. Usernames must contain only alphanumeric characters."
+    return 1
+  fi
+
+  # Check if site_alias is specified (single site) or empty (all sites)
+  if [ -z "$site_alias" ]; then
+    # All sites mode - build per-stack alias from STACK_ALIASES
+    build_stack_alias "$stack" "$environment"
+    local full_alias="$BUILD_STACK_ALIAS_RESULT"
+    if [ -z "$full_alias" ]; then
+      echo -e "  ${RED}✗ [error]${NC} No alias configured for stack '$stack'."
+      return 1
+    fi
+
+    # Validate that full_alias is not a local environment
+    if ! validate_env_not_local "$full_alias"; then
+      echo -e "  ${RED}✗ [error]${NC} Cannot apply changes to all sites on a local environment."
+      echo "  Please specify a specific site alias for local development."
+      return 1
+    fi
+
+    echo "  Adding user $username on stack: $stack_label (all sites, env: $environment)..."
+    if drush "${full_alias}" acsf-tools:mlc user:create "'$username' '--mail=${username}@asu.edu'" --no-interaction 2>&1; then
+      echo -e "${BLACK}${CYAN_BG}[info]${CYAN} The attempt to ${YELLOW}add${CYAN} the user ${YELLOW}$username${CYAN} to ${YELLOW}all sites${CYAN} on ${YELLOW}stack ${stack}: ${stack_label}"
+      echo -e "  ${CYAN}in the ${YELLOW}${environment}${CYAN} environment has completed.${NC}"
+      echo " "
+      echo -e "${BLACK}${YELLOW_BG}[note]${YELLOW} Please review the output above for any errors or warnings. Make note of any sites that may"
+      echo -e "  have failed to update, make adjustments and try again, or update them one-by-one (as appropriate).${NC}"
+      return 0
+    else
+      echo -e "  ${RED}✗ [error]${NC} Failed to add $username to all sites on $stack_label"
+      return 1
+    fi
+  else
+    # Single site mode - use regular drush user create commands
+    echo "  Adding $username on stack: $stack_label (site_alias: $site_alias)..."
+    if drush "${site_alias}" "user:create" "$username" --mail="${username}"@asu.edu --no-interaction 2>&1; then
+      echo -e "  ${GREEN}✓ [success]${NC} Successfully added user: $username on '$stack_label' $site_alias"
+      return 0
+    else
+      echo -e "  ${RED}✗ [error]${NC} Failed to add user: $username on '$stack_label' $site_alias"
+      return 1
+    fi
+  fi
+}
+
+# ========================== Wizard UI =======================================
+
+# Print header
+function print_header() {
+  echo ""
+  echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗"
+  echo -e         "║      ASU Governance Add User - Interactive Wizard          ║"
+  echo -e         "║                     -------------                          ║"
+  echo -e         "║               For use by ET Web Team only.                 ║"
+  echo -e         "║      Requirements for use:                                 ║"
+  echo -e         "║        - appropriate SSH access permissions on Acquia      ║"
+  echo -e         "║        - Drush aliases for targeted sites                  ║"
+  echo -e         "║          (Can be obtained via 'ddev asusf:aliases')        ║"
+  echo -e         "╚════════════════════════════════════════════════════════════╝${NC}"
+}
+
+# ========================== Wizard Flow Functions ============================
+
+# Main wizard flow
+function run_wizard() {
+  print_header
+
+  # Step 1: Get username
+  echo ""
+  local username=$(get_text_input "${YELLOW}Step 1: Enter the username (ASURITE Id):${NC} ")
+
+  # Step 2: Ask if targeting single site or multiple sites
+  echo ""
+  local site_mode_options=("Single site" "Multiple sites")
+  print_menu "${YELLOW}Step 2: Are you targeting a single site or multiple sites?${NC}" "${site_mode_options[@]}"
+  local site_mode_choice=$(get_menu_input "${YELLOW}Enter your choice:${NC} " "${#site_mode_options[@]}")
+
+  local selected_stacks=()
+  local site_alias=""
+
+  if [ "$site_mode_choice" -eq 1 ]; then
+    # Single site mode - skip stack selection, go directly to site alias input
+    echo ""
+    site_alias=$(get_text_input "${YELLOW}Step 3: Enter the site alias (e.g. @websparkci.live, @self):${NC} ")
+    selected_stacks=("single-site-mode")
+  else
+    # Multiple sites mode - select stack(s) and apply to all sites on those stacks
+
+    # Step 3: Select stack(s)
+    echo ""
+    echo -e "${YELLOW}Step 3: Select stack(s) to apply changes to all sites:${NC}"
+    echo ""
+    while IFS= read -r key; do
+      echo " - ${STACKS[$key]} ($key)"
+    done < <(get_sorted_stack_keys)
+    echo ""
+
+    # Get stack selection - validate against actual stack keys
+    local stack_choice=""
+    while true; do
+      echo -ne "${YELLOW}Enter stack number:${NC} " >&2
+      read -r stack_choice < /dev/tty
+
+      if [[ "$stack_choice" =~ ^[0-9]+$ ]]; then
+        if [ "$stack_choice" -eq 0 ] || [ -n "${STACKS[$stack_choice]+x}" ]; then
+          break
+        fi
+      fi
+      local valid_keys
+      valid_keys=$(get_sorted_stack_keys | tr '\n' ', ' | sed 's/,$//')
+      echo -e "${RED}✗ [error]${NC} Invalid selection. Enter a valid stack number ($valid_keys) or 0 for all stacks." >&2
+      echo "" >&2
+    done
+
+    if [ "$stack_choice" -eq 0 ]; then
+      while IFS= read -r key; do
+        selected_stacks+=("$key")
+      done < <(get_real_stack_keys)
+    else
+      selected_stacks=("$stack_choice")
+    fi
+
+    # Step 4: Select environment
+    echo ""
+    local environments=("live" "test" "dev")
+    print_menu "${YELLOW}Step 4: Which environment would you like to target? [default: ${DEFAULT_ENVIRONMENT}]${NC}" "${environments[@]}"
+    local env_choice=$(get_menu_input "${YELLOW}Enter your choice:${NC} " "${#environments[@]}")
+    local selected_env="${environments[$((env_choice - 1))]}"
+  fi
+
+  # Step 5: Confirm action
+  echo ""
+  echo -e "${YELLOW}Step 5: Please review your selection:${NC}"
+  echo ""
+  echo -ne "${CYAN}Are you sure you want to ${YELLOW}add${CYAN} the user ${YELLOW}${username}${NC}"
+
+  if [ "$site_mode_choice" -eq 1 ]; then
+    echo -e " ${CYAN}on site: ${YELLOW}$site_alias${NC}"
+  else
+    echo -e " ${CYAN}on the following:${NC}"
+    echo -e "${YELLOW}  - ${STACKS[$stack_choice]} (all sites, environment: $selected_env)\n${NC}"
+  fi
+
+  echo -ne "${CYAN}Do you want to continue? (yes/no) [${YELLOW}yes${CYAN}]:${NC} "
+  read -r response < /dev/tty
+
+  if [ -z "$response" ]; then
+    response="yes"
+  fi
+
+  if ! [[ "$response" =~ ^[Yy]([Ee][Ss])?$ ]]; then
+    echo -e "${RED}✗ [error]${NC} Action cancelled."
+    echo ""
+    return
+  fi
+
+  # Step 6: Execute action
+  echo ""
+  echo -e "${YELLOW}Step 6: Executing...${NC}"
+  echo ""
+
+  if [ "$site_mode_choice" -eq 1 ]; then
+    add_user "$username" "single-site" "$site_alias"
+  else
+    for stack in "${selected_stacks[@]}"; do
+      add_user "$username" "$stack" "" "$selected_env"
+    done
+  fi
+
+  echo ""
+}
+
+# ========================== Flag Parsing & Help =============================
+
+# Print usage information
+function print_usage() {
+  cat << EOF
+
+╔════════════════════════════════════════════════════════════╗
+║        ASU Governance Add User - Usage Information         ║
+╚════════════════════════════════════════════════════════════╝
+
+OPTIONS:
+  --username=<username>        Required. The username (ASURITE Id) to manage
+  --stack=<stack_number>       Optional for single-site targets, required for 'allsites'.
+                               Stack number (0 = all stacks, or a specific stack number).
+                               Not needed when --site-alias is a specific site (e.g., @self).
+  --site-alias=<alias>         Required. Site alias (e.g., @alias.env, @self).
+                               Use special value 'allsites' to apply to all sites on the selected stack(s).
+                               Note: For local environments, you must specify a site alias and cannot use 'allsites' or target multiple stacks.
+  --help                       Display this help message
+
+AVAILABLE STACKS:
+EOF
+  while IFS= read -r key; do
+    echo "  $key. ${STACKS[$key]}"
+  done < <(get_sorted_stack_keys)
+  cat << EOF
+EOF
+}
+
+# Parse command-line flags and execute
+function handle_flags() {
+  local username=""
+  local stack_index=""
+  local site_alias=""
+
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --help|-h)
+        print_usage
+        exit 0
+        ;;
+      --username=*)
+        username="${1#*=}"
+        shift
+        ;;
+      --username)
+        username="$2"
+        shift 2
+        ;;
+      --stack=*)
+        stack_index="${1#*=}"
+        shift
+        ;;
+      --stack)
+        stack_index="$2"
+        shift 2
+        ;;
+      --site_alias=*|--site-alias=*)
+        site_alias="${1#*=}"
+        shift
+        ;;
+      --site_alias|--site-alias)
+        site_alias="$2"
+        shift 2
+        ;;
+      *)
+        echo -e "${RED}✗ [error]${NC} Unknown option: $1"
+        print_usage
+        exit 1
+        ;;
+    esac
+  done
+
+  if [ -z "$username" ]; then
+    echo -e "${RED}✗ [error]${NC} --username is required when using flags."
+    print_usage
+    exit 1
+  fi
+
+  if [ -z "$site_alias" ]; then
+    echo -e "${RED}✗ [error]${NC} --site-alias is required when using flags."
+    echo "  Use --site-alias allsites to apply to all sites on the selected stack(s),"
+    echo "  or specify a site alias (e.g., --site-alias @mysite.dev, @self) for a specific site."
+    print_usage
+    exit 1
+  fi
+
+  # Determine site to use based on site_alias value
+  if [ "$site_alias" = "allsites" ]; then
+    # All-sites mode: --stack is required
+    if [ -z "$stack_index" ]; then
+      echo -e "${RED}✗ [error]${NC} --stack is required when using --site-alias allsites."
+      print_usage
+      exit 1
+    fi
+
+    # Validate stack_index is a number
+    if ! [[ "$stack_index" =~ ^[0-9]+$ ]]; then
+      echo -e "${RED}✗ [error]${NC} Invalid stack index '$stack_index'. Must be a number (0 for all stacks, 1-N for specific stack)."
+      print_usage
+      exit 1
+    fi
+
+    # Determine stacks to use based on stack_index
+    local target_stacks=()
+
+    if [ "$stack_index" -eq 0 ]; then
+      # 0 means all stacks — exclude key 0 (the "All stacks" meta-entry)
+      while IFS= read -r key; do
+        target_stacks+=("$key")
+      done < <(get_real_stack_keys)
+    elif [ -n "${STACKS[$stack_index]+x}" ]; then
+      # Valid stack key - store the numeric key
+      target_stacks=("$stack_index")
+    else
+      local valid_keys
+      valid_keys=$(get_sorted_stack_keys | tr '\n' ', ' | sed 's/,$//')
+      echo -e "${RED}✗ [error]${NC} Invalid stack number '$stack_index'. Valid stack numbers are: $valid_keys (or 0 for all stacks)."
+      print_usage
+      exit 1
+    fi
+
+    # Execute all-sites mode (site_alias empty triggers multi-site in add_user)
+    echo ""
+    for s in "${target_stacks[@]}"; do
+      echo "Processing user: $username on stack: ${STACKS[$s]:-$s} (all sites)..."
+      add_user "$username" "$s" ""
+    done
+    echo ""
+  else
+    # Single-site mode: --stack is optional (defaults to "local" label)
+    local stack_label="local"
+    if [ -n "$stack_index" ]; then
+      # Stack was provided — validate and use it for the label
+      if ! [[ "$stack_index" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}✗ [error]${NC} Invalid stack index '$stack_index'. Must be a number (0 for all stacks, 1-N for specific stack)."
+        print_usage
+        exit 1
+      fi
+      if [ -n "${STACKS[$stack_index]+x}" ]; then
+        stack_label="${STACKS[$stack_index]}"
+      else
+        local valid_keys
+        valid_keys=$(get_sorted_stack_keys | tr '\n' ', ' | sed 's/,$//')
+        echo -e "${RED}✗ [error]${NC} Invalid stack number '$stack_index'. Valid stack numbers are: $valid_keys (or 0 for all stacks)."
+        print_usage
+        exit 1
+      fi
+    fi
+
+    echo ""
+    echo "Processing user: $username on site: $site_alias..."
+    add_user "$username" "$stack_label" "$site_alias"
+    echo ""
+  fi
+}
+
+# ========================== Main Script =============================
+
+check_ssh_connectivity
+authenticate || (printf "Failed to authenticate" && exit $?)
+ensure_alias_files
+
+# Check if any arguments were provided
+if [ $# -eq 0 ]; then
+  run_wizard
+else
+  handle_flags "$@"
+fi
