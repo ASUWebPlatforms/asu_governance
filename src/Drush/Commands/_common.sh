@@ -167,7 +167,7 @@ function ensure_alias_files() {
   # Skip alias file checks if the repository is not a stack environment.
   local repo_url
   repo_url="$(git -C "$PROJECT_ROOT" remote get-url origin 2>/dev/null || true)"
-  if [[ "$repo_url" != *"asufactory"* ]]; then
+  if [[ "$repo_url" != *"asufactory"* ]] && [[ "$repo_url" != *"asu_governance"* ]]; then
     return 0
   fi
 
