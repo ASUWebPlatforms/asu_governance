@@ -17,3 +17,67 @@ asu_governance.settings:
       sequence:
         type: string
         label: 'Theme'
+    permissions_blacklist:
+      type: sequence
+      label: 'Permissions Blacklist'
+      sequence:
+        type: string
+        label: 'Permission'
+    allow_config_access:
+      type: boolean
+      label: 'Allow config sync access'
+    allow_roles_perms_admin:
+      type: boolean
+      label: 'Allow roles and permissions administration'
+    permissions_users:
+      type: sequence
+      label: 'Permissions Users'
+      sequence:
+        type: string
+        label: 'Username'
+    installer_forms_completed:
+      type: boolean
+      label: 'Installer forms completed'
+    active_environment_preset:
+      type: string
+      label: 'Active environment preset key'
+
+asu_governance.settings.env_*:
+  type: config_object
+  label: 'ASU Governance Environment Preset'
+  mapping:
+    label:
+      type: string
+      label: 'Preset label'
+    allowable_modules:
+      type: sequence
+      label: 'Allowable Modules'
+      orderby: value
+      sequence:
+        type: string
+        label: 'Module'
+    allowable_themes:
+      type: sequence
+      label: 'Allowable Themes'
+      orderby: value
+      sequence:
+        type: string
+        label: 'Theme'
+    permissions_blacklist:
+      type: sequence
+      label: 'Permissions Blacklist'
+      sequence:
+        type: string
+        label: 'Permission'
+    allow_config_access:
+      type: boolean
+      label: 'Allow config sync access'
+    allow_roles_perms_admin:
+      type: boolean
+      label: 'Allow roles and permissions administration'
+    permissions_users:
+      type: sequence
+      label: 'Permissions Users'
+      sequence:
+        type: string
+        label: 'Username'

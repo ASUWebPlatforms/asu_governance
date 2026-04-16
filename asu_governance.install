@@ -295,3 +295,4 @@ function asu_governance_update_10004() {
   $config->save();
 
 }
+

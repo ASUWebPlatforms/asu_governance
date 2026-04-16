@@ -56,6 +56,13 @@ class ModulePermissionHandler {
   protected CallableResolver $callableResolver;
 
   /**
+   * The governance config resolver.
+   *
+   * @var \Drupal\asu_governance\Services\GovernanceConfigResolver
+   */
+  protected GovernanceConfigResolver $configResolver;
+
+  /**
    * Constructs the ModulePermissionHandler object.
    *
    * @param \Drupal\user\PermissionHandlerInterface $permission_handler
@@ -68,13 +75,16 @@ class ModulePermissionHandler {
    *   The entity type manager service.
    * @param \Drupal\Core\Utility\CallableResolver $callable_resolver
    *   The callable resolver service.
+   * @param \Drupal\asu_governance\Services\GovernanceConfigResolver $config_resolver
+   *   The governance config resolver.
    */
-  public function __construct(PermissionHandlerInterface $permission_handler, ModuleHandlerInterface $module_handler, ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, CallableResolver $callable_resolver) {
+  public function __construct(PermissionHandlerInterface $permission_handler, ModuleHandlerInterface $module_handler, ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, CallableResolver $callable_resolver, GovernanceConfigResolver $config_resolver) {
     $this->permissionHandler = $permission_handler;
     $this->moduleHandler = $module_handler;
     $this->configFactory = $config_factory;
     $this->entityTypeManager = $entity_type_manager;
     $this->callableResolver = $callable_resolver;
+    $this->configResolver = $config_resolver;
   }
 
   /**
@@ -200,7 +210,7 @@ class ModulePermissionHandler {
       }
       // Grant permissions not in the blacklist.
       foreach ($modulePermissions as $permission) {
-        $permissionBlacklist = $this->configFactory->get('asu_governance.settings')->get('permissions_blacklist');
+        $permissionBlacklist = $this->configResolver->get('permissions_blacklist');
         $permissionWhitelist = static::BASE_SB_WHITELIST;
         if (in_array($permission, $permissionWhitelist, TRUE) || !in_array($permission, $permissionBlacklist, TRUE)) {
           $role->grantPermission($permission);
@@ -296,7 +306,7 @@ class ModulePermissionHandler {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function revokeBlacklistedPermissions() {
-    $blacklist = $this->configFactory->get('asu_governance.settings')->get('permissions_blacklist');
+    $blacklist = $this->configResolver->get('permissions_blacklist');
     // Get all roles.
     $roles = Role::loadMultiple();
     // Remove the administrator and site_builder roles from the list.

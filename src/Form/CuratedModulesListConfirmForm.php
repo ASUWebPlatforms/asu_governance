@@ -2,6 +2,7 @@
 
 namespace Drupal\asu_governance\Form;
 
+use Drupal\asu_governance\Services\GovernanceConfigResolver;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Extension\ModuleInstallerInterface;
@@ -24,11 +25,19 @@ class CuratedModulesListConfirmForm extends ModulesListConfirmForm {
   protected $configFactory;
 
   /**
+   * The governance config resolver.
+   *
+   * @var \Drupal\asu_governance\Services\GovernanceConfigResolver
+   */
+  protected GovernanceConfigResolver $configResolver;
+
+  /**
    * {@inheritdoc}
    */
-  public function __construct(ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, KeyValueStoreExpirableInterface $key_value_expirable, ConfigFactoryInterface $config_factory) {
+  public function __construct(ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, KeyValueStoreExpirableInterface $key_value_expirable, ConfigFactoryInterface $config_factory, GovernanceConfigResolver $config_resolver) {
     parent::__construct($module_handler, $module_installer, $key_value_expirable);
     $this->configFactory = $config_factory;
+    $this->configResolver = $config_resolver;
   }
 
   /**
@@ -39,7 +48,8 @@ class CuratedModulesListConfirmForm extends ModulesListConfirmForm {
       $container->get('module_handler'),
       $container->get('module_installer'),
       $container->get('keyvalue.expirable')->get('module_list'),
-      $container->get('config.factory')
+      $container->get('config.factory'),
+      $container->get('asu_governance.config_resolver')
     );
   }
 
@@ -87,13 +97,11 @@ class CuratedModulesListConfirmForm extends ModulesListConfirmForm {
         ]);
         $allDependencies[] = current(array_keys($dependencies));
       }
-      // Load the editable config object for asu_governance.settings.
-      $config = $this->configFactory->getEditable('asu_governance.settings');
-      $current_allowed = $this->config('asu_governance.settings')->get('allowable_modules');
+      // Update allowable_modules in both main config and active preset.
+      $current_allowed = $this->configResolver->get('allowable_modules');
       $new_allowed = array_unique(array_merge($current_allowed, $allDependencies));
       if ($current_allowed !== $new_allowed) {
-        // Save the array into configuration.
-        $config->set('allowable_modules', $new_allowed)->save();
+        $this->configResolver->set('allowable_modules', $new_allowed);
       }
     }
     return $items;
