@@ -61,7 +61,7 @@ class AsusfConfigurePurgerForm extends ConfigFormBase {
   public function buildForm(array $form, FormStateInterface $form_state) {
     self::buildPurgerConfigFields($form);
 
-    // Standalone submit button
+    // Standalone submit button.
     $form['actions'] = ['#type' => 'actions'];
     $form['actions']['submit'] = [
       '#type' => 'submit',

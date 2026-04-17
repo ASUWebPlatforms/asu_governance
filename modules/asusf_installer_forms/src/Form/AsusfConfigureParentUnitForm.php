@@ -35,11 +35,11 @@ class AsusfConfigureParentUnitForm extends ConfigFormBase {
 
     $form['explanation'] = [
       '#markup' => '<h3>Add parent unit</h3><p>If this site is for a department/college/unit ' .
-        'that has a parent unit to be displayed in the site\'s header, enter that information below. ' .
-        'You can also add it later in the ASU brand header configuration.' .
-        '<h4>Header example with Parent unit:</h4>' .
-        '<img src="/modules/contrib/asu_governance/modules/asusf_installer_forms/img/parent-unit-header.jpg" ' .
-        'alt="Parent unit example" style="margin-top: 1rem; opacity: 0.6;" /></p>',
+      'that has a parent unit to be displayed in the site\'s header, enter that information below. ' .
+      'You can also add it later in the ASU brand header configuration.' .
+      '<h4>Header example with Parent unit:</h4>' .
+      '<img src="/modules/contrib/asu_governance/modules/asusf_installer_forms/img/parent-unit-header.jpg" ' .
+      'alt="Parent unit example" style="margin-top: 1rem; opacity: 0.6;" /></p>',
     ];
 
     $form['parent_unit_name'] = [

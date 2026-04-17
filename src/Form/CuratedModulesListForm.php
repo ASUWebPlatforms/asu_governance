@@ -178,7 +178,9 @@ class CuratedModulesListForm extends ModulesListForm {
       if (empty($module->info['hidden'])) {
         $package = $module->info['package'];
         $form['modules'][$package][$filename] = $this->buildRow($all_modules, $module, $distribution);
-        $form['modules'][$package][$filename]['#parents'] = ['modules', $filename];
+        $form['modules'][$package][$filename]['#parents'] = [
+          'modules', $filename,
+        ];
       }
       if (!$incompatible_installed && $module->status && $module->info['core_incompatible']) {
         $incompatible_installed = TRUE;
@@ -193,7 +195,7 @@ class CuratedModulesListForm extends ModulesListForm {
     foreach (Element::children($form['modules']) as $package) {
       $form['modules'][$package] += [
         '#type' => 'details',
-        '#title' => Markup::create(Xss::filterAdmin($this->t($package))),
+        '#title' => Markup::create(Xss::filterAdmin($package)),
         '#open' => TRUE,
         '#theme' => 'system_modules_details',
         '#attributes' => ['class' => ['package-listing']],

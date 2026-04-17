@@ -83,6 +83,8 @@ final class GovernanceSettingsForm extends ConfigFormBase {
    *   The theme handler service.
    * @param \Drupal\asu_governance\Services\ModulePermissionHandler $modulePermissionHandler
    *   The module permission loader service.
+   * @param \Drupal\Core\Database\Connection $connection
+   *   The database connection.
    */
   public function __construct(ConfigFactoryInterface $config_factory, ModuleHandlerInterface $module_handler, ThemeHandlerInterface $theme_handler, ModulePermissionHandler $modulePermissionHandler, Connection $connection) {
     parent::__construct($config_factory);
@@ -364,7 +366,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function validateForm(array &$form, FormStateInterface $form_state): void {
-    // Skip validation if no environment preset has been selected (fields are hidden).
+    // Skip validation if env preset is not selected (fields are hidden).
     $selectedPreset = $form_state->getValue('environment_preset') ?? '';
     if (empty($selectedPreset)) {
       return;

@@ -12,9 +12,10 @@ use Symfony\Component\Yaml\Yaml;
  * Resolves governance configuration from the active environment preset.
  *
  * The main config (asu_governance.settings) stores runtime values and is kept
- * in sync on every save. However, when preset-specific fields (allowable_modules,
- * allowable_themes, permissions_blacklist) are modified outside the settings form,
- * this service ensures the active preset config is also updated.
+ * in sync on every save. However, when preset-specific fields
+ * (allowable_modules,allowable_themes, permissions_blacklist) are modified
+ * outside the settings form, this service ensures the active preset config
+ * is also updated.
  */
 class GovernanceConfigResolver {
 
@@ -61,7 +62,7 @@ class GovernanceConfigResolver {
    * Get the active environment preset key, or empty string if none.
    *
    * @return string
-   *   The active preset key (e.g., 'stack1', 'my_site'), or '' if none selected.
+   *   The active preset key (eg, 'stack1', 'my_site'), or '' if none selected.
    */
   public function getActivePresetKey(): string {
     return $this->configFactory->get('asu_governance.settings')->get('active_environment_preset') ?? '';
@@ -162,4 +163,3 @@ class GovernanceConfigResolver {
   }
 
 }
-
