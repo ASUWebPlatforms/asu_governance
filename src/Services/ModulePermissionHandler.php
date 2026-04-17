@@ -209,9 +209,9 @@ class ModulePermissionHandler {
         $modulePermissions = array_keys($discoveredPermissions);
       }
       // Grant permissions not in the blacklist.
+      $permissionBlacklist = $this->configResolver->get('permissions_blacklist') ?? [];
+      $permissionWhitelist = static::BASE_SB_WHITELIST;
       foreach ($modulePermissions as $permission) {
-        $permissionBlacklist = $this->configResolver->get('permissions_blacklist');
-        $permissionWhitelist = static::BASE_SB_WHITELIST;
         if (in_array($permission, $permissionWhitelist, TRUE) || !in_array($permission, $permissionBlacklist, TRUE)) {
           $role->grantPermission($permission);
         }

@@ -98,7 +98,7 @@ class CuratedModulesListConfirmForm extends ModulesListConfirmForm {
         $allDependencies[] = current(array_keys($dependencies));
       }
       // Update allowable_modules in both main config and active preset.
-      $current_allowed = $this->configResolver->get('allowable_modules');
+      $current_allowed = $this->configResolver->get('allowable_modules') ?? [];
       $new_allowed = array_unique(array_merge($current_allowed, $allDependencies));
       if ($current_allowed !== $new_allowed) {
         $this->configResolver->set('allowable_modules', $new_allowed);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\asu_governance\Form;
 
+use Drupal\asu_governance\Services\GovernanceConfigResolver;
 use Drupal\asu_governance\Services\ModulePermissionHandler;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
@@ -12,7 +13,6 @@ use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Database\Connection;
-use Symfony\Component\Yaml\Yaml;
 
 /**
  * Configure ASU governance settings for this site.
@@ -46,6 +46,13 @@ final class GovernanceSettingsForm extends ConfigFormBase {
    * @var \Drupal\Core\Database\Connection
    */
   protected $connection;
+
+  /**
+   * The governance config resolver.
+   *
+   * @var \Drupal\asu_governance\Services\GovernanceConfigResolver
+   */
+  protected GovernanceConfigResolver $configResolver;
 
   /**
    * Disallowed modules.
@@ -85,13 +92,16 @@ final class GovernanceSettingsForm extends ConfigFormBase {
    *   The module permission loader service.
    * @param \Drupal\Core\Database\Connection $connection
    *   The database connection.
+   * @param \Drupal\asu_governance\Services\GovernanceConfigResolver $config_resolver
+   *   The governance config resolver.
    */
-  public function __construct(ConfigFactoryInterface $config_factory, ModuleHandlerInterface $module_handler, ThemeHandlerInterface $theme_handler, ModulePermissionHandler $modulePermissionHandler, Connection $connection) {
+  public function __construct(ConfigFactoryInterface $config_factory, ModuleHandlerInterface $module_handler, ThemeHandlerInterface $theme_handler, ModulePermissionHandler $modulePermissionHandler, Connection $connection, GovernanceConfigResolver $config_resolver) {
     parent::__construct($config_factory);
     $this->moduleHandler = $module_handler;
     $this->themeHandler = $theme_handler;
     $this->modulePermissionHandler = $modulePermissionHandler;
     $this->connection = $connection;
+    $this->configResolver = $config_resolver;
   }
 
   /**
@@ -104,6 +114,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
       $container->get('theme_handler'),
       $container->get('asu_governance.module_permission_handler'),
       $container->get('database'),
+      $container->get('asu_governance.config_resolver'),
     );
   }
 
@@ -156,11 +167,13 @@ final class GovernanceSettingsForm extends ConfigFormBase {
         $configName = basename($file, '.yml');
         $key = substr($configName, strlen($prefix));
         if (!isset($presets[$key])) {
-          $data = Yaml::parse(file_get_contents($file));
-          $presets[$key] = [
-            'config_name' => $configName,
-            'label' => $data['label'] ?? $key,
-          ];
+          $data = $this->configResolver->parseYamlFile($file);
+          if ($data !== NULL) {
+            $presets[$key] = [
+              'config_name' => $configName,
+              'label' => $data['label'] ?? $key,
+            ];
+          }
         }
       }
     }
@@ -193,7 +206,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
     $modulePath = $this->moduleHandler->getModule('asu_governance')->getPath();
     $file = DRUPAL_ROOT . '/' . $modulePath . '/config/install/' . $configName . '.yml';
     if (file_exists($file)) {
-      return Yaml::parse(file_get_contents($file));
+      return $this->configResolver->parseYamlFile($file);
     }
 
     return NULL;
@@ -221,7 +234,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
 
     $form['environment_preset'] = [
       '#type' => 'select',
-      '#title' => $this->t('Please indicate your website or stack'),
+      '#title' => $this->t('Please indicate your stack or website'),
       '#options' => $presetOptions,
       '#default_value' => $savedPreset,
       '#required' => TRUE,
@@ -238,7 +251,10 @@ final class GovernanceSettingsForm extends ConfigFormBase {
 
     // When the preset selection changes via Ajax, clear the user input for the
     // preset fields so that #default_value is used instead of stale input.
-    if ($form_state->hasValue('environment_preset')) {
+    // Only do this when the triggering element is the preset selector itself,
+    // not on validation-error rebuilds or other form rebuilds.
+    $triggeringElement = $form_state->getTriggeringElement();
+    if ($triggeringElement && ($triggeringElement['#name'] ?? '') === 'environment_preset') {
       $input = &$form_state->getUserInput();
       unset($input['allowable_modules']);
       unset($input['allowable_themes']);
@@ -295,7 +311,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
       $form['preset_fields']['new_site_name'] = [
         '#type' => 'textfield',
         '#title' => $this->t('Site name'),
-        '#description' => $this->t('Enter a name for this site or environment. This will be used as the label in the preset selector.'),
+        '#description' => $this->t('Enter a name for this site or environment. This will be used as the label in the stack/site selector.'),
         '#required' => TRUE,
       ];
     }
@@ -379,12 +395,10 @@ final class GovernanceSettingsForm extends ConfigFormBase {
         $form_state->setErrorByName('new_site_name', $this->t('Please enter a name for the new site.'));
         return;
       }
-      // Generate a machine name and check for collisions.
+      // Generate a machine name and check for collisions against both DB and YAML.
       $machineKey = preg_replace('/[^a-z0-9_]/', '_', strtolower($newSiteName));
       $machineKey = preg_replace('/_+/', '_', trim($machineKey, '_'));
-      $configName = self::ENV_CONFIG_PREFIX . $machineKey;
-      $existing = $this->configFactory->get($configName);
-      if (!$existing->isNew()) {
+      if ($this->loadPresetData($machineKey) !== NULL) {
         $form_state->setErrorByName('new_site_name', $this->t('A preset with the key "@key" already exists. Please choose a different name.', ['@key' => $machineKey]));
         return;
       }

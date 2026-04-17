@@ -390,16 +390,23 @@ function asu_governance_update_10005() {
 }
 
 /**
- * Helper to determine the current repository name.
+ * Helper to determine the current repository/application name.
  *
- * Tries the git remote URL first, then falls back to the local directory name.
+ * Prefers the Acquia AH_SITE_GROUP environment variable (available on Acquia
+ * Cloud and ACSF). Falls back to git-based detection for local development.
  *
  * @return string|null
- *   The repository name (e.g., 'asufactory1'), or NULL if it cannot be
- *   determined.
+ *   The repository/application name (e.g., 'asufactory1'), or NULL if it
+ *   cannot be determined.
  */
 function _asu_governance_get_repo_name(): ?string {
-  // Try remote origin URL first.
+  // Prefer Acquia's environment variable (reliable on all Acquia environments).
+  $siteGroup = getenv('AH_SITE_GROUP');
+  if (!empty($siteGroup)) {
+    return $siteGroup;
+  }
+
+  // Fallback for local/non-Acquia environments: try git remote URL.
   $url = @shell_exec('git config --get remote.origin.url 2>/dev/null');
   if ($url) {
     $url = trim($url);
@@ -408,7 +415,7 @@ function _asu_governance_get_repo_name(): ?string {
     }
   }
 
-  // Fallback to the top-level directory name.
+  // Last resort: top-level directory name.
   $root = @shell_exec('git rev-parse --show-toplevel 2>/dev/null');
   if ($root) {
     $root = trim($root);

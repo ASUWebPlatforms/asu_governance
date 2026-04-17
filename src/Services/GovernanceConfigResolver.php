@@ -6,6 +6,7 @@ namespace Drupal\asu_governance\Services;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
+use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -156,10 +157,39 @@ class GovernanceConfigResolver {
     $modulePath = $this->moduleHandler->getModule('asu_governance')->getPath();
     $file = DRUPAL_ROOT . '/' . $modulePath . '/config/install/' . $configName . '.yml';
     if (file_exists($file)) {
-      return Yaml::parse(file_get_contents($file));
+      return $this->parseYamlFile($file);
     }
 
     return NULL;
+  }
+
+  /**
+   * Safely parse a YAML file, returning its data or NULL on failure.
+   *
+   * Logs an error if the file cannot be read or contains malformed YAML.
+   *
+   * @param string $file
+   *   The absolute path to the YAML file.
+   *
+   * @return array|null
+   *   The parsed data array, or NULL on failure.
+   */
+  public function parseYamlFile(string $file): ?array {
+    $contents = @file_get_contents($file);
+    if ($contents === FALSE) {
+      \Drupal::logger('asu_governance')->error('Could not read file: @file', ['@file' => $file]);
+      return NULL;
+    }
+    try {
+      return Yaml::parse($contents);
+    }
+    catch (ParseException $e) {
+      \Drupal::logger('asu_governance')->error('Malformed YAML in @file: @message', [
+        '@file' => $file,
+        '@message' => $e->getMessage(),
+      ]);
+      return NULL;
+    }
   }
 
 }

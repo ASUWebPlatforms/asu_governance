@@ -24,8 +24,8 @@ final class AsuGovernanceCommands extends DrushCommands {
   #[CLI\Usage(name: 'asu_governance:role-manager (agrm) --action=add --role=administrator --username=jdoe --stack=1 --site-alias=@websparkreleasestable.live', description: 'Adds the administrator role to user jdoe in the live environment for the webspark release stable site on stack 1')]
 
   /**
- * Role manager drush command.
- */
+   * Role manager drush command.
+   */
   #[CLI\Usage(name: 'asu_governance:role-manager (agrm) --action=remove --role=site_builder --username=jdoe --stack=3 --site-alias=allsites', description: 'Removes the site_builder role from user jdoe on all sites on stack 3')]
   public function roleManager(array $options = [
     'action' => NULL,
@@ -64,8 +64,8 @@ final class AsuGovernanceCommands extends DrushCommands {
   #[CLI\Usage(name: 'asu_governance:add-user (agau) --username=jdoe --stack=1 --site-alias=@websparkreleasestable.live', description: 'Adds user jdoe in the live environment for the webspark release stable site on stack 1')]
 
   /**
- * Add user drush command.
- */
+   * Add user drush command.
+   */
   #[CLI\Usage(name: 'asu_governance:add-user (agau) --username=jdoe --stack=3 --site-alias=allsites', description: 'Adds user jdoe on all sites on stack 3')]
   public function addUser(array $options = [
     'username' => NULL,
