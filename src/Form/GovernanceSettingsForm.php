@@ -517,45 +517,18 @@ final class GovernanceSettingsForm extends ConfigFormBase {
       $presetLabel = $existingData['label'] ?? $presetKey;
     }
 
-    // Save which preset is active.
-    $governanceSettings->set('active_environment_preset', $presetKey)->save();
-
-    // Explode submitted modules textarea into an array and remove duplicates.
+    // Parse all submitted values first.
     $modulesInput = array_unique(array_filter(array_map('trim', explode("\n", $form_state->getValue('allowable_modules') ?? ''))));
-    $governanceSettings->set('allowable_modules', $modulesInput)->save();
-
-    $modulesDiff = array_diff($originals ?? [], $modulesInput);
-    if (!empty($modulesDiff)) {
-      $this->modulePermissionHandler->revokeSiteBuilderModulePermissions($modulesDiff);
-    }
-
-    $this->modulePermissionHandler->addSiteBuilderModulePermissions($modulesInput);
-
     $themesInput = array_unique(array_filter(array_map('trim', explode("\n", $form_state->getValue('allowable_themes') ?? ''))));
-    $governanceSettings->set('allowable_themes', $themesInput)->save();
-
-    $governanceSettings->set('allow_config_access', $form_state->getValue('allow_config_access'))->save();
-
     $blacklistInput = $form_state->getValue('permissions_blacklist') ? array_unique(array_filter(array_map('trim', explode("\n", $form_state->getValue('permissions_blacklist'))))) : [];
-    $governanceSettings->set('permissions_blacklist', $blacklistInput)->save();
-
-    if ($form_state->getValue('allow_roles_perms_admin')) {
-      $governanceSettings->set('allow_roles_perms_admin', $form_state->getValue('allow_roles_perms_admin'))->save();
-      $permsUsersInput = array_unique(array_filter(array_map('trim', explode("\n", $form_state->getValue('permissions_users') ?? ''))));
-      $governanceSettings->set('permissions_users', $permsUsersInput)->save();
-    }
-    else {
-      $governanceSettings->set('allow_roles_perms_admin', FALSE)->save();
-      $governanceSettings->set('permissions_users', NULL)->save();
-    }
-
-    // Save the submitted values to the preset's DB config.
     $allowConfigAccess = (bool) $form_state->getValue('allow_config_access');
     $allowRolesPermsAdmin = (bool) $form_state->getValue('allow_roles_perms_admin');
     $permsUsersInput = $allowRolesPermsAdmin
       ? array_values(array_unique(array_filter(array_map('trim', explode("\n", $form_state->getValue('permissions_users') ?? '')))))
       : [];
 
+    // Save the preset's DB config BEFORE updating permissions so that the
+    // blacklist is available to ModulePermissionHandler via ConfigResolver.
     $presetConfigName = self::ENV_CONFIG_PREFIX . $presetKey;
     $presetConfig = $this->configFactory->getEditable($presetConfigName);
     $presetConfig->setData([
@@ -567,6 +540,29 @@ final class GovernanceSettingsForm extends ConfigFormBase {
       'allow_roles_perms_admin' => $allowRolesPermsAdmin,
       'permissions_users' => $permsUsersInput,
     ])->save();
+
+    // Save which preset is active and main governance settings.
+    $governanceSettings->set('active_environment_preset', $presetKey)->save();
+    $governanceSettings->set('allowable_modules', $modulesInput)->save();
+    $governanceSettings->set('allowable_themes', $themesInput)->save();
+    $governanceSettings->set('allow_config_access', $allowConfigAccess)->save();
+    $governanceSettings->set('permissions_blacklist', $blacklistInput)->save();
+    if ($allowRolesPermsAdmin) {
+      $governanceSettings->set('allow_roles_perms_admin', TRUE)->save();
+      $governanceSettings->set('permissions_users', $permsUsersInput)->save();
+    }
+    else {
+      $governanceSettings->set('allow_roles_perms_admin', FALSE)->save();
+      $governanceSettings->set('permissions_users', NULL)->save();
+    }
+
+    // Now that blacklist and all config is persisted, update permissions.
+    $modulesDiff = array_diff($originals ?? [], $modulesInput);
+    if (!empty($modulesDiff)) {
+      $this->modulePermissionHandler->revokeSiteBuilderModulePermissions($modulesDiff);
+    }
+
+    $this->modulePermissionHandler->addSiteBuilderModulePermissions($modulesInput);
   }
 
 }
