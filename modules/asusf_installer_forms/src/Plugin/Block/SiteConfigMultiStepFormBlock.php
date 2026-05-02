@@ -18,7 +18,6 @@ use Drupal\Core\Access\AccessResult;
  * admin_label = @Translation("Multi-step AJAX form block")
  * )
  */
-
 class SiteConfigMultiStepFormBlock extends BlockBase implements ContainerFactoryPluginInterface {
   /**
    * The form builder service.
@@ -63,8 +62,12 @@ class SiteConfigMultiStepFormBlock extends BlockBase implements ContainerFactory
     return $this->formBuilder->getForm(MultiStepAjaxForm::class);
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function access(AccountInterface $account, $return_as_object = FALSE) {
     $access = $account->hasPermission('administer site configuration');
     return $return_as_object ? AccessResult::allowedIf($access) : $access;
   }
+
 }

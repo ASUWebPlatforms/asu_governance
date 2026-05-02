@@ -35,5 +35,11 @@ services:
 
   asu_governance.module_permission_handler:
     class: Drupal\asu_governance\Services\ModulePermissionHandler
-    arguments: [ '@user.permissions', '@module_handler', '@config.factory', '@entity_type.manager', '@callable_resolver' ]
+    arguments: [ '@user.permissions', '@module_handler', '@config.factory', '@entity_type.manager', '@callable_resolver', '@asu_governance.config_resolver' ]
     Drupal\asu_governance\Services\ModulePermissionHandler: '@asu_governance.module_permission_handler'
+
+  asu_governance.config_resolver:
+    class: Drupal\asu_governance\Services\GovernanceConfigResolver
+    arguments: [ '@config.factory', '@module_handler' ]
+    Drupal\asu_governance\Services\GovernanceConfigResolver: '@asu_governance.config_resolver'
+
