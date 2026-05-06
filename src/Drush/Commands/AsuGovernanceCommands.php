@@ -10,6 +10,7 @@ use Symfony\Component\Process\Process;
  * A Drush commandfile.
  */
 final class AsuGovernanceCommands extends DrushCommands {
+
   /**
    * An interactive tool for managing admin roles on Acquia sites.
    */
@@ -21,8 +22,18 @@ final class AsuGovernanceCommands extends DrushCommands {
   #[CLI\Option(name: 'site-alias', description: 'Site alias to target (format: @alias.env or @self). Use "allsites" to target all sites on the specified stack(s).')]
   #[CLI\Usage(name: 'asu_governance:role-manager (agrm)', description: 'Wizard mode: interactively prompts for options')]
   #[CLI\Usage(name: 'asu_governance:role-manager (agrm) --action=add --role=administrator --username=jdoe --stack=1 --site-alias=@websparkreleasestable.live', description: 'Adds the administrator role to user jdoe in the live environment for the webspark release stable site on stack 1')]
+
+  /**
+   * Role manager drush command.
+   */
   #[CLI\Usage(name: 'asu_governance:role-manager (agrm) --action=remove --role=site_builder --username=jdoe --stack=3 --site-alias=allsites', description: 'Removes the site_builder role from user jdoe on all sites on stack 3')]
-  public function roleManager(array $options = ['action' => NULL, 'role' => NULL, 'username' => NULL, 'stack' => NULL, 'site-alias' => NULL]) {
+  public function roleManager(array $options = [
+    'action' => NULL,
+    'role' => NULL,
+    'username' => NULL,
+    'stack' => NULL,
+    'site-alias' => NULL,
+  ]) {
 
     $myOptions = [
       'action' => $options['action'],
@@ -32,7 +43,7 @@ final class AsuGovernanceCommands extends DrushCommands {
       'site_alias' => $options['site-alias'],
     ];
 
-    // Validate options
+    // Validate options.
     if (!$this->validateOptions($myOptions)) {
       return self::EXIT_FAILURE;
     }
@@ -51,8 +62,16 @@ final class AsuGovernanceCommands extends DrushCommands {
   #[CLI\Option(name: 'site-alias', description: 'Site alias to target (format: @alias.env or @self). Use "allsites" to target all sites on the specified stack(s).')]
   #[CLI\Usage(name: 'asu_governance:add-user (agau)', description: 'Wizard mode: interactively prompts for options')]
   #[CLI\Usage(name: 'asu_governance:add-user (agau) --username=jdoe --stack=1 --site-alias=@websparkreleasestable.live', description: 'Adds user jdoe in the live environment for the webspark release stable site on stack 1')]
+
+  /**
+   * Add user drush command.
+   */
   #[CLI\Usage(name: 'asu_governance:add-user (agau) --username=jdoe --stack=3 --site-alias=allsites', description: 'Adds user jdoe on all sites on stack 3')]
-  public function addUser(array $options = ['username' => NULL, 'stack' => NULL, 'site-alias' => NULL]) {
+  public function addUser(array $options = [
+    'username' => NULL,
+    'stack' => NULL,
+    'site-alias' => NULL,
+  ]) {
 
     $myOptions = [
       'username' => $options['username'],
@@ -60,7 +79,7 @@ final class AsuGovernanceCommands extends DrushCommands {
       'site_alias' => $options['site-alias'],
     ];
 
-    // Validate options
+    // Validate options.
     if (!$this->validateOptions($myOptions)) {
       return self::EXIT_FAILURE;
     }
@@ -70,41 +89,45 @@ final class AsuGovernanceCommands extends DrushCommands {
     return $this->runProcess($process);
   }
 
+  /**
+   * Validate command options for both roleManager and addUser commands.
+   */
   private function validateOptions(array $myOptions): bool {
-    // Validate 'action' option
-    if (isset($myOptions['action']) && $myOptions['action'] !== NULL && !in_array($myOptions['action'], ['add', 'remove'], true)) {
+    // Validate 'action' option.
+    if (isset($myOptions['action']) && $myOptions['action'] !== NULL &&
+      !in_array($myOptions['action'], ['add', 'remove'], TRUE)) {
       $this->logger()->error('Invalid action. Allowed values are "add" or "remove".');
-      return false;
+      return FALSE;
     }
 
-    // Validate 'role' option
+    // Validate 'role' option.
     if (isset($myOptions['role']) && $myOptions['role'] !== NULL) {
-      if (!in_array($myOptions['role'], ['administrator', 'site_builder'], true)) {
+      if (!in_array($myOptions['role'], ['administrator', 'site_builder'], TRUE)) {
         $this->logger()
           ->error('The "role" option requires a value of "administrator" or "site_builder".');
         return FALSE;
       }
     }
 
-    // Validate 'username' option
+    // Validate 'username' option.
     if ($myOptions['username'] !== NULL) {
       if (!preg_match('/^[a-zA-Z0-9]+$/', $myOptions['username'])) {
         $this->logger()->error('The "username" option must be a valid ASURITE Id.');
-        return false;
+        return FALSE;
       }
     }
 
-    // Validate 'stack' option
+    // Validate 'stack' option.
     if ($myOptions['stack'] !== NULL) {
       $stackValue = (string) $myOptions['stack'];
       // Ensure the raw value is a non-negative integer string before casting.
       if (!ctype_digit($stackValue)) {
         $this->logger()->error('The "stack" option must be a non-negative integer.');
-        return false;
+        return FALSE;
       }
     }
 
-    return true;
+    return TRUE;
   }
 
   /**

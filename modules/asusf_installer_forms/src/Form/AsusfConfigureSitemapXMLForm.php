@@ -25,6 +25,9 @@ class AsusfConfigureSitemapXMLForm extends ConfigFormBase {
     return 'asusf_install_configure_simplexml_form';
   }
 
+  /**
+   * Builds the form fields for the base URL configuration.
+   */
   public static function buildBaseUrlFields(array &$form) {
 
     $form['#markup'] = \Drupal::translation()->translate('<h2>Base URL</h2>');
@@ -42,10 +45,10 @@ class AsusfConfigureSitemapXMLForm extends ConfigFormBase {
 
     $form['explanation'] = [
       '#markup' => '<p>Enter the base URL expected to be used with this site when it launches ' .
-        '(ex. https://mysite.engineering.asu.edu, https://topleveldomain.asu.edu). ' .
-        'This will help with search results and SEO.</p>' .
-        '<p>If the base URL is still TBD, leave this blank because it can be added ' .
-        'later under the Simple XML Sitemap settings.</p>'
+      '(ex. https://mysite.engineering.asu.edu, https://topleveldomain.asu.edu). ' .
+      'This will help with search results and SEO.</p>' .
+      '<p>If the base URL is still TBD, leave this blank because it can be added ' .
+      'later under the Simple XML Sitemap settings.</p>',
     ];
   }
 

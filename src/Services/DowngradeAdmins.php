@@ -6,7 +6,6 @@ namespace Drupal\asu_governance\Services;
 
 use Drupal\asu_governance\Batch\Batch;
 use Drupal\asu_secure_superadmin\Services\ChangeSuperAdminService;
-use Drupal\user\Entity\User;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
 /**

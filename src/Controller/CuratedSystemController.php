@@ -2,6 +2,7 @@
 
 namespace Drupal\asu_governance\Controller;
 
+use Drupal\asu_governance\Services\GovernanceConfigResolver;
 use Drupal\Core\Extension\ExtensionLifecycle;
 use Drupal\Core\Extension\ModuleExtensionList;
 use Drupal\Core\Extension\ThemeExtensionList;
@@ -12,6 +13,7 @@ use Drupal\Core\Theme\ThemeAccessCheck;
 use Drupal\Core\Url;
 use Drupal\system\SystemManager;
 use Drupal\system\Controller\SystemController;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Returns responses for System routes.
@@ -24,6 +26,13 @@ class CuratedSystemController extends SystemController {
    * @var array
    */
   protected $allowableThemes;
+
+  /**
+   * The governance config resolver.
+   *
+   * @var \Drupal\asu_governance\Services\GovernanceConfigResolver
+   */
+  protected GovernanceConfigResolver $configResolver;
 
   /**
    * Constructs a new CuratedSystemController.
@@ -40,8 +49,10 @@ class CuratedSystemController extends SystemController {
    *   The module extension list.
    * @param \Drupal\Core\Extension\ThemeExtensionList $theme_extension_list
    *   The theme extension list.
+   * @param \Drupal\asu_governance\Services\GovernanceConfigResolver $config_resolver
+   *   The governance config resolver.
    */
-  public function __construct(SystemManager $systemManager, ThemeAccessCheck $theme_access, FormBuilderInterface $form_builder, MenuLinkTreeInterface $menu_link_tree, ModuleExtensionList $module_extension_list, ThemeExtensionList $theme_extension_list) {
+  public function __construct(SystemManager $systemManager, ThemeAccessCheck $theme_access, FormBuilderInterface $form_builder, MenuLinkTreeInterface $menu_link_tree, ModuleExtensionList $module_extension_list, ThemeExtensionList $theme_extension_list, GovernanceConfigResolver $config_resolver) {
     parent::__construct(
       $systemManager,
       $theme_access,
@@ -49,7 +60,23 @@ class CuratedSystemController extends SystemController {
       $menu_link_tree,
       $module_extension_list,
       $theme_extension_list);
-    $this->allowableThemes = $this->config('asu_governance.settings')->get('allowable_themes') ?? [];
+    $this->configResolver = $config_resolver;
+    $this->allowableThemes = $this->configResolver->get('allowable_themes') ?? [];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('system.manager'),
+      $container->get('access_check.theme'),
+      $container->get('form_builder'),
+      $container->get('menu.link_tree'),
+      $container->get('extension.list.module'),
+      $container->get('extension.list.theme'),
+      $container->get('asu_governance.config_resolver'),
+    );
   }
 
   /**
@@ -162,7 +189,7 @@ class CuratedSystemController extends SystemController {
       }
 
       $theme->operations = [];
-      if (!empty($theme->status) || !$theme->info['core_incompatible'] && !$theme->incompatible_php && !$theme->incompatible_base && !$theme->incompatible_engine && !$theme->incompatible_module && empty($theme->module_dependencies_disabled)) {
+      if (!empty($theme->status) || (!$theme->info['core_incompatible'] && !$theme->incompatible_php && !$theme->incompatible_base && !$theme->incompatible_engine && !$theme->incompatible_module && empty($theme->module_dependencies_disabled))) {
         // Create the operations links.
         $query['theme'] = $theme->getName();
         if ($this->themeAccess->checkAccess($theme->getName())) {

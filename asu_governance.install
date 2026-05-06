@@ -295,3 +295,134 @@ function asu_governance_update_10004() {
   $config->save();
 
 }
+
+/**
+ * Map existing site configuration to an environment preset.
+ *
+ * Determines the repository name, maps it to a preset key and label, then
+ * creates a preset config from the EXISTING database values (so the preset
+ * does not override what is already configured). Sets the active preset so
+ * the GovernanceSettingsForm remembers the selection.
+ */
+function asu_governance_update_10005() {
+  // Repository-to-label mapping.
+  $repoMapping = [
+    'aaexpert' => 'Ask an Expert',
+    'asuapp1' => 'ASU CMS (Homepage)',
+    'asuapp2' => 'ASU iSearch',
+    'asuapp3' => 'Financial Aid',
+    'asuapp4' => 'Sun Devil Athletics',
+    'asuapp6' => 'Thunderbird',
+    'asunews' => 'ASU News',
+    'asutest1' => 'ASU Test1',
+    'asufactory1' => 'Webspark stack',
+    'asufactory2' => 'The College stack',
+    'asufactory3' => 'ASU Drupal stack',
+    'asufactory4' => 'Webspark stack (Drupal 9)',
+    'asufactory5' => 'Fulton Schools of Engineering stack',
+    'asufactory6' => 'Knowledge Enterprise stack',
+  ];
+
+  // Maps repository names to existing preset keys (from YAML files).
+  // If a repo matches one of these, we reuse that preset key.
+  $repoToPresetKey = [
+    'asufactory1' => 'stack1',
+    'asufactory2' => 'stack2',
+    'asufactory3' => 'stack3',
+    'asufactory4' => 'stack4',
+    'asufactory5' => 'stack5',
+    'asufactory6' => 'stack6',
+  ];
+
+  // Determine the repository name.
+  $repoName = _asu_governance_get_repo_name();
+  if (empty($repoName)) {
+    \Drupal::logger('asu_governance')->warning('Could not determine repository name during update 10005. Skipping preset mapping.');
+    return;
+  }
+
+  // Determine the preset key and label.
+  if (isset($repoToPresetKey[$repoName])) {
+    // This repo maps to an existing YAML preset.
+    $presetKey = $repoToPresetKey[$repoName];
+  }
+  else {
+    // Generate a machine-safe key from the repo name.
+    $presetKey = preg_replace('/[^a-z0-9_]/', '_', strtolower($repoName));
+    $presetKey = preg_replace('/_+/', '_', trim($presetKey, '_'));
+  }
+
+  $presetLabel = $repoMapping[$repoName] ?? $repoName;
+  $configPrefix = 'asu_governance.settings.env_';
+  $presetConfigName = $configPrefix . $presetKey;
+
+  // Load the current active governance settings from the database.
+  $mainConfig = \Drupal::configFactory()->get('asu_governance.settings');
+  $allowableModules = $mainConfig->get('allowable_modules') ?? [];
+  $allowableThemes = $mainConfig->get('allowable_themes') ?? [];
+  $permissionsBlacklist = $mainConfig->get('permissions_blacklist') ?? [];
+  $allowConfigAccess = $mainConfig->get('allow_config_access') ?? FALSE;
+  $allowRolesPermsAdmin = $mainConfig->get('allow_roles_perms_admin') ?? FALSE;
+  $permissionsUsers = $mainConfig->get('permissions_users') ?? [];
+
+  // Create (or overwrite) the preset config with the EXISTING database values.
+  // This ensures the preset reflects what the site already has, not the YAML defaults.
+  $presetConfig = \Drupal::configFactory()->getEditable($presetConfigName);
+  $presetConfig->setData([
+    'label' => $presetLabel,
+    'allowable_modules' => $allowableModules,
+    'allowable_themes' => $allowableThemes,
+    'permissions_blacklist' => $permissionsBlacklist,
+    'allow_config_access' => $allowConfigAccess,
+    'allow_roles_perms_admin' => $allowRolesPermsAdmin,
+    'permissions_users' => $permissionsUsers,
+  ])->save();
+
+  // Set the active preset on the main config.
+  \Drupal::configFactory()->getEditable('asu_governance.settings')
+    ->set('active_environment_preset', $presetKey)
+    ->save();
+
+  \Drupal::logger('asu_governance')->notice(
+    'Mapped repository "@repo" to environment preset "@key" ("@label").',
+    ['@repo' => $repoName, '@key' => $presetKey, '@label' => $presetLabel]
+  );
+}
+
+/**
+ * Helper to determine the current repository/application name.
+ *
+ * Prefers the Acquia AH_SITE_GROUP environment variable (available on Acquia
+ * Cloud and ACSF). Falls back to git-based detection for local development.
+ *
+ * @return string|null
+ *   The repository/application name (e.g., 'asufactory1'), or NULL if it
+ *   cannot be determined.
+ */
+function _asu_governance_get_repo_name(): ?string {
+  // Prefer Acquia's environment variable (reliable on all Acquia environments).
+  $siteGroup = getenv('AH_SITE_GROUP');
+  if (!empty($siteGroup)) {
+    return $siteGroup;
+  }
+
+  // Fallback for local/non-Acquia environments: try git remote URL.
+  $url = @shell_exec('git config --get remote.origin.url 2>/dev/null');
+  if ($url) {
+    $url = trim($url);
+    if (!empty($url)) {
+      return basename($url, '.git');
+    }
+  }
+
+  // Last resort: top-level directory name.
+  $root = @shell_exec('git rev-parse --show-toplevel 2>/dev/null');
+  if ($root) {
+    $root = trim($root);
+    if (!empty($root)) {
+      return basename($root);
+    }
+  }
+
+  return NULL;
+}

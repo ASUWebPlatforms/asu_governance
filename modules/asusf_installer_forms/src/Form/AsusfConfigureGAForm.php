@@ -79,7 +79,7 @@ class AsusfConfigureGAForm extends ConfigFormBase {
   public function buildForm(array $form, FormStateInterface $form_state) {
     self::buildAnalyticsFields($form);
 
-    // Submit button for standalone use
+    // Submit button for standalone use.
     $form['actions'] = ['#type' => 'actions'];
     $form['actions']['submit'] = [
       '#type' => 'submit',

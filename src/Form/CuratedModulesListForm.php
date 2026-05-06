@@ -2,6 +2,7 @@
 
 namespace Drupal\asu_governance\Form;
 
+use Drupal\asu_governance\Services\GovernanceConfigResolver;
 use Drupal\asu_governance\Services\ModulePermissionHandler;
 use Drupal\Core\Access\AccessManagerInterface;
 use Drupal\Core\Extension\InfoParserException;
@@ -52,6 +53,13 @@ class CuratedModulesListForm extends ModulesListForm {
   protected $modulePermissionHandler;
 
   /**
+   * The governance config resolver.
+   *
+   * @var \Drupal\asu_governance\Services\GovernanceConfigResolver
+   */
+  protected GovernanceConfigResolver $configResolver;
+
+  /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
@@ -64,7 +72,8 @@ class CuratedModulesListForm extends ModulesListForm {
       $container->get('user.permissions'),
       $container->get('extension.list.module'),
       $container->get('messenger'),
-      $container->get('asu_governance.module_permission_handler')
+      $container->get('asu_governance.module_permission_handler'),
+      $container->get('asu_governance.config_resolver')
     );
   }
 
@@ -89,10 +98,13 @@ class CuratedModulesListForm extends ModulesListForm {
    *   The messenger service.
    * @param \Drupal\asu_governance\Services\ModulePermissionHandler $modulePermissionHandler
    *   The module permission handler.
+   * @param \Drupal\asu_governance\Services\GovernanceConfigResolver $configResolver
+   *   The governance config resolver.
    */
-  public function __construct(ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, KeyValueStoreExpirableInterface $key_value_expirable, AccessManagerInterface $access_manager, AccountInterface $current_user, PermissionHandlerInterface $permission_handler, ModuleExtensionList $extension_list_module, Messenger $messenger, ModulePermissionHandler $modulePermissionHandler) {
+  public function __construct(ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, KeyValueStoreExpirableInterface $key_value_expirable, AccessManagerInterface $access_manager, AccountInterface $current_user, PermissionHandlerInterface $permission_handler, ModuleExtensionList $extension_list_module, Messenger $messenger, ModulePermissionHandler $modulePermissionHandler, GovernanceConfigResolver $configResolver) {
     parent::__construct($module_handler, $module_installer, $key_value_expirable, $access_manager, $current_user, $permission_handler, $extension_list_module);
-    $this->allowableModules = !empty($this->config('asu_governance.settings')->get('allowable_modules')) ? $this->config('asu_governance.settings')->get('allowable_modules') : $this->config('asu_governance.settings')->get('allowable_modules');
+    $this->configResolver = $configResolver;
+    $this->allowableModules = $this->configResolver->get('allowable_modules') ?? [];
     $this->messenger = $messenger;
     $this->modulePermissionHandler = $modulePermissionHandler;
   }
@@ -166,7 +178,9 @@ class CuratedModulesListForm extends ModulesListForm {
       if (empty($module->info['hidden'])) {
         $package = $module->info['package'];
         $form['modules'][$package][$filename] = $this->buildRow($all_modules, $module, $distribution);
-        $form['modules'][$package][$filename]['#parents'] = ['modules', $filename];
+        $form['modules'][$package][$filename]['#parents'] = [
+          'modules', $filename,
+        ];
       }
       if (!$incompatible_installed && $module->status && $module->info['core_incompatible']) {
         $incompatible_installed = TRUE;
@@ -181,7 +195,7 @@ class CuratedModulesListForm extends ModulesListForm {
     foreach (Element::children($form['modules']) as $package) {
       $form['modules'][$package] += [
         '#type' => 'details',
-        '#title' => Markup::create(Xss::filterAdmin($this->t($package))),
+        '#title' => Markup::create(Xss::filterAdmin($package)),
         '#open' => TRUE,
         '#theme' => 'system_modules_details',
         '#attributes' => ['class' => ['package-listing']],
