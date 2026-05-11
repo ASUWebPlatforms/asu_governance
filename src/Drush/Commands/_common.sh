@@ -33,6 +33,7 @@ declare -A STACKS=(
   [1]="Webspark Stack"
   [3]="Drupal Stack"
   [4]="Webspark Stack [Drupal 9]"
+  [5]="Fulton Engineering Stack"
 )
 
 # Maps stack number → Drush alias prefix.
@@ -42,6 +43,7 @@ declare -A STACK_ALIASES=(
   [1]="@asufactory1.01"
   [3]="@asufactory3.03"
   [4]="@asufactory4.04"
+  [5]="@asufactory5.05"
 )
 
 # Maps stack number → alias file path (relative to project root).
@@ -49,6 +51,7 @@ declare -A STACK_ALIAS_FILES=(
   [1]="drush/sites/asufactory1.site.yml"
   [3]="drush/sites/asufactory3.site.yml"
   [4]="drush/sites/asufactory4.site.yml"
+  [5]="drush/sites/asufactory5.site.yml"
 )
 
 # Maps stack number → acli download instructions (application name and number).
@@ -56,6 +59,7 @@ declare -A STACK_ALIAS_DOWNLOAD_HINTS=(
   [1]="Webspark Stack"
   [3]="ASU Drupal Stack"
   [4]="Webspark Stack Drupal 9"
+  [5]="Fulton Engineering Stack"
 )
 
 # Maps stack number → Acquia Cloud application UUID.
@@ -65,6 +69,7 @@ declare -A STACK_APP_UUIDS=(
   [1]="ed6ba37d-8d64-4a45-8d89-78f9460cf550"
   [3]="6c63152a-3c87-4295-8999-8c3f6b03ae30"
   [4]="e64e5765-54f4-4b6e-9b12-8c4071f2067e"
+  [5]="ee1a8f14-65ee-4392-9a1d-3a75f3fe82c8"
 )
 
 # Define available roles to manage

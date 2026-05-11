@@ -45,7 +45,7 @@ function setuplocal() {
   ddev symlink-project;
   ddev drush si -y;
   ddev drush en asusf_installer_forms -y;
-  ddev launch "$(ddev drush uli)";
+  ddev launch "$(ddev drush uli --no-browser)";
 }
 
 setuplocal
