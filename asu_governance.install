@@ -5,6 +5,7 @@
  * Install, update and uninstall functions for the asu_governance module.
  */
 
+use Drupal\asu_governance\Services\GovernanceConfigResolver;
 use Drupal\user\Entity\Role;
 use Drupal\user\Entity\User;
 use Symfony\Component\Yaml\Yaml;
@@ -34,7 +35,10 @@ function asu_governance_install() {
     return;
   }
 
-  // Get the current theme
+  // Detect the repository and apply the matching environment preset defaults.
+  _asu_governance_apply_preset_on_install();
+
+  // Ensure the current theme is in the allowable themes list.
   $currentTheme = \Drupal::service('theme_handler')->getDefault();
   $config = \Drupal::configFactory()->getEditable('asu_governance.settings');
   $allowableThemes = $config->get('allowable_themes') ?? [];
@@ -75,7 +79,7 @@ function asu_governance_install() {
   // Add base permissions to the Content Editor role.
   $modulePermissionHandler->addBasePermissions('content_editor', 'BASE_CE_PERMISSIONS');
 
-  // Get the list of allowable modules.
+  // Get the list of allowable modules (now populated from the preset).
   $allowableModules = \Drupal::config('asu_governance.settings')->get('allowable_modules');
   // Update the Site Builder role's permissions.
   $modulePermissionHandler->addSiteBuilderModulePermissions($allowableModules);
@@ -305,56 +309,14 @@ function asu_governance_update_10004() {
  * the GovernanceSettingsForm remembers the selection.
  */
 function asu_governance_update_10005() {
-  // Repository-to-label mapping.
-  $repoMapping = [
-    'aaexpert' => 'Ask an Expert',
-    'asuapp1' => 'ASU CMS (Homepage)',
-    'asuapp2' => 'ASU iSearch',
-    'asuapp3' => 'Financial Aid',
-    'asuapp4' => 'Sun Devil Athletics',
-    'asuapp6' => 'Thunderbird',
-    'asunews' => 'ASU News',
-    'asutest1' => 'ASU Test1',
-    'asufactory1' => 'Webspark stack',
-    'asufactory2' => 'The College stack',
-    'asufactory3' => 'ASU Drupal stack',
-    'asufactory4' => 'Webspark stack (Drupal 9)',
-    'asufactory5' => 'Fulton Schools of Engineering stack',
-    'asufactory6' => 'Knowledge Enterprise stack',
-  ];
-
-  // Maps repository names to existing preset keys (from YAML files).
-  // If a repo matches one of these, we reuse that preset key.
-  $repoToPresetKey = [
-    'asufactory1' => 'stack1',
-    'asufactory2' => 'stack2',
-    'asufactory3' => 'stack3',
-    'asufactory4' => 'stack4',
-    'asufactory5' => 'stack5',
-    'asufactory6' => 'stack6',
-  ];
-
-  // Determine the repository name.
-  $repoName = _asu_governance_get_repo_name();
-  if (empty($repoName)) {
+  $resolved = _asu_governance_resolve_preset();
+  if ($resolved === NULL) {
     \Drupal::logger('asu_governance')->warning('Could not determine repository name during update 10005. Skipping preset mapping.');
     return;
   }
 
-  // Determine the preset key and label.
-  if (isset($repoToPresetKey[$repoName])) {
-    // This repo maps to an existing YAML preset.
-    $presetKey = $repoToPresetKey[$repoName];
-  }
-  else {
-    // Generate a machine-safe key from the repo name.
-    $presetKey = preg_replace('/[^a-z0-9_]/', '_', strtolower($repoName));
-    $presetKey = preg_replace('/_+/', '_', trim($presetKey, '_'));
-  }
-
-  $presetLabel = $repoMapping[$repoName] ?? $repoName;
-  $configPrefix = 'asu_governance.settings.env_';
-  $presetConfigName = $configPrefix . $presetKey;
+  ['key' => $presetKey, 'label' => $presetLabel] = $resolved;
+  $presetConfigName = 'asu_governance.settings.env_' . $presetKey;
 
   // Load the current active governance settings from the database.
   $mainConfig = \Drupal::configFactory()->get('asu_governance.settings');
@@ -385,7 +347,123 @@ function asu_governance_update_10005() {
 
   \Drupal::logger('asu_governance')->notice(
     'Mapped repository "@repo" to environment preset "@key" ("@label").',
-    ['@repo' => $repoName, '@key' => $presetKey, '@label' => $presetLabel]
+    ['@repo' => _asu_governance_get_repo_name(), '@key' => $presetKey, '@label' => $presetLabel]
+  );
+}
+
+/**
+ * Returns the repository-to-label mapping and repo-to-preset-key mapping.
+ *
+ * @return array
+ *   An associative array with two keys:
+ *   - 'repo_labels': Maps repository names to human-readable labels.
+ *   - 'repo_preset_keys': Maps repository names to preset keys (from YAML).
+ */
+function _asu_governance_get_repo_mapping(): array {
+  return [
+    'repo_labels' => [
+      'asufactory1' => 'Webspark Stack',
+      'asufactory2' => 'The College Stack',
+      'asufactory3' => 'ASU Drupal Stack',
+      'asufactory4' => 'Webspark stack (Drupal 9)',
+      'asufactory5' => 'Fulton Engineering Stack',
+    ],
+    'repo_preset_keys' => [
+      'asufactory1' => 'stack1',
+      'asufactory2' => 'stack2',
+      'asufactory3' => 'stack3',
+      'asufactory4' => 'stack4',
+      'asufactory5' => 'stack5',
+    ],
+  ];
+}
+
+/**
+ * Resolve the current environment to a preset key and label.
+ *
+ * @return array|null
+ *   An associative array with 'key' and 'label', or NULL if the repository
+ *   cannot be determined.
+ */
+function _asu_governance_resolve_preset(): ?array {
+  $repoName = _asu_governance_get_repo_name();
+  if (empty($repoName)) {
+    return NULL;
+  }
+
+  $mapping = _asu_governance_get_repo_mapping();
+  $repoLabels = $mapping['repo_labels'];
+  $repoPresetKeys = $mapping['repo_preset_keys'];
+
+  // Determine the preset key.
+  if (isset($repoPresetKeys[$repoName])) {
+    $presetKey = $repoPresetKeys[$repoName];
+  }
+  else {
+    // Generate a machine-safe key from the repo name.
+    $presetKey = preg_replace('/[^a-z0-9_]/', '_', strtolower($repoName));
+    $presetKey = preg_replace('/_+/', '_', trim($presetKey, '_'));
+  }
+
+  $presetLabel = $repoLabels[$repoName] ?? $repoName;
+
+  return ['key' => $presetKey, 'label' => $presetLabel];
+}
+
+/**
+ * Detect the environment preset and apply its YAML defaults on fresh install.
+ *
+ * On a new install the database config is empty, so we load the matching
+ * preset YAML file and populate asu_governance.settings with its defaults.
+ * If no matching preset file is found, the install proceeds with the base
+ * (empty) config and the admin can configure it later via the settings form.
+ */
+function _asu_governance_apply_preset_on_install(): void {
+  $resolved = _asu_governance_resolve_preset();
+  if ($resolved === NULL) {
+    \Drupal::logger('asu_governance')->notice('Could not determine repository name during install. Preset must be configured manually.');
+    return;
+  }
+
+  ['key' => $presetKey, 'label' => $presetLabel] = $resolved;
+
+  // Load preset data via the config resolver (DB-first, YAML fallback with
+  // error handling) instead of manually reading from disk.
+  /** @var \Drupal\asu_governance\Services\GovernanceConfigResolver $configResolver */
+  $configResolver = \Drupal::service('asu_governance.config_resolver');
+  $presetData = $configResolver->loadPresetData($presetKey);
+
+  if ($presetData === NULL) {
+    \Drupal::logger('asu_governance')->notice(
+      'No preset data found for "@key". Using base config.',
+      ['@key' => $presetKey]
+    );
+    // Still set the active preset key so the form knows which preset is selected.
+    \Drupal::configFactory()->getEditable('asu_governance.settings')
+      ->set('active_environment_preset', $presetKey)
+      ->save();
+    return;
+  }
+
+  // Apply the preset defaults to the main governance settings.
+  $config = \Drupal::configFactory()->getEditable('asu_governance.settings');
+  $fieldDefaults = [
+    'allowable_modules' => [],
+    'allowable_themes' => [],
+    'permissions_blacklist' => [],
+    'allow_config_access' => FALSE,
+    'allow_roles_perms_admin' => FALSE,
+    'permissions_users' => [],
+  ];
+  foreach (GovernanceConfigResolver::PRESET_FIELDS as $field) {
+    $config->set($field, $presetData[$field] ?? ($fieldDefaults[$field] ?? NULL));
+  }
+  $config->set('active_environment_preset', $presetKey);
+  $config->save();
+
+  \Drupal::logger('asu_governance')->notice(
+    'Applied environment preset "@key" ("@label") from resolved config.',
+    ['@key' => $presetKey, '@label' => $presetLabel]
   );
 }
 
