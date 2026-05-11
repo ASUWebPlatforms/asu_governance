@@ -1,4 +1,6 @@
 #!/bin/bash
+#ddev-generated
+
 ##
 ## NOTE: This is a copy of the asusf:aliases command in the webspark stacks. It is only included here
 ## to enable local development and testing. The command needs to be installed in whatever project uses
@@ -133,7 +135,7 @@ function get_site_list() {
   fi
 }
 
-options=("Webspark Stack" "The College Stack" "Drupal Stack" "Webspark Stack (Drupal 9)")
+options=("Webspark Stack" "The College Stack" "Drupal Stack" "Webspark Stack (Drupal 9)" "Fulton Engineering Stack")
 # Display the menu with indented numbers
 echo -e "${YELLOW}Please choose a site factory stack:${NC}"
 for i in "${!options[@]}"; do
