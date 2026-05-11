@@ -5,6 +5,7 @@
  * Install, update and uninstall functions for the asu_governance module.
  */
 
+use Drupal\asu_governance\Services\GovernanceConfigResolver;
 use Drupal\user\Entity\Role;
 use Drupal\user\Entity\User;
 use Symfony\Component\Yaml\Yaml;
@@ -361,14 +362,6 @@ function asu_governance_update_10005() {
 function _asu_governance_get_repo_mapping(): array {
   return [
     'repo_labels' => [
-      'aaexpert' => 'Ask an Expert',
-      'asuapp1' => 'ASU CMS (Homepage)',
-      'asuapp2' => 'ASU iSearch',
-      'asuapp3' => 'Financial Aid',
-      'asuapp4' => 'Sun Devil Athletics',
-      'asuapp6' => 'Thunderbird',
-      'asunews' => 'ASU News',
-      'asutest1' => 'ASU Test1',
       'asufactory1' => 'Webspark Stack',
       'asufactory2' => 'The College Stack',
       'asufactory3' => 'ASU Drupal Stack',
@@ -433,17 +426,17 @@ function _asu_governance_apply_preset_on_install(): void {
   }
 
   ['key' => $presetKey, 'label' => $presetLabel] = $resolved;
-  $presetConfigName = 'asu_governance.settings.env_' . $presetKey;
 
-  // Try to load defaults from the preset YAML file.
-  $module_extension_list = \Drupal::service('extension.list.module');
-  $modulePath = $module_extension_list->getPath('asu_governance');
-  $yamlFile = DRUPAL_ROOT . '/' . $modulePath . '/config/install/' . $presetConfigName . '.yml';
+  // Load preset data via the config resolver (DB-first, YAML fallback with
+  // error handling) instead of manually reading from disk.
+  /** @var \Drupal\asu_governance\Services\GovernanceConfigResolver $configResolver */
+  $configResolver = \Drupal::service('asu_governance.config_resolver');
+  $presetData = $configResolver->loadPresetData($presetKey);
 
-  if (!file_exists($yamlFile)) {
+  if ($presetData === NULL) {
     \Drupal::logger('asu_governance')->notice(
-      'No preset YAML file found for "@key" (looked for @file). Using base config.',
-      ['@key' => $presetKey, '@file' => $yamlFile]
+      'No preset data found for "@key". Using base config.',
+      ['@key' => $presetKey]
     );
     // Still set the active preset key so the form knows which preset is selected.
     \Drupal::configFactory()->getEditable('asu_governance.settings')
@@ -452,21 +445,24 @@ function _asu_governance_apply_preset_on_install(): void {
     return;
   }
 
-  $presetData = Yaml::parse(file_get_contents($yamlFile));
-
   // Apply the preset defaults to the main governance settings.
   $config = \Drupal::configFactory()->getEditable('asu_governance.settings');
-  $config->set('allowable_modules', $presetData['allowable_modules'] ?? []);
-  $config->set('allowable_themes', $presetData['allowable_themes'] ?? []);
-  $config->set('permissions_blacklist', $presetData['permissions_blacklist'] ?? []);
-  $config->set('allow_config_access', $presetData['allow_config_access'] ?? FALSE);
-  $config->set('allow_roles_perms_admin', $presetData['allow_roles_perms_admin'] ?? FALSE);
-  $config->set('permissions_users', $presetData['permissions_users'] ?? []);
+  $fieldDefaults = [
+    'allowable_modules' => [],
+    'allowable_themes' => [],
+    'permissions_blacklist' => [],
+    'allow_config_access' => FALSE,
+    'allow_roles_perms_admin' => FALSE,
+    'permissions_users' => [],
+  ];
+  foreach (GovernanceConfigResolver::PRESET_FIELDS as $field) {
+    $config->set($field, $presetData[$field] ?? ($fieldDefaults[$field] ?? NULL));
+  }
   $config->set('active_environment_preset', $presetKey);
   $config->save();
 
   \Drupal::logger('asu_governance')->notice(
-    'Applied environment preset "@key" ("@label") from YAML defaults.',
+    'Applied environment preset "@key" ("@label") from resolved config.',
     ['@key' => $presetKey, '@label' => $presetLabel]
   );
 }

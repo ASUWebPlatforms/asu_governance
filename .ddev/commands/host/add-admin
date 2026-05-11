@@ -58,7 +58,7 @@ function addadmin() {
   fi
   ddev drush ucrt "$1";
   ddev drush urol administrator "$1";
-  ddev launch $(ddev drush uli --name="$1" --no-browser)
+  ddev launch "$(ddev drush uli --name="$1" --no-browser)"
 }
 
 addadmin "$@"
