@@ -9,6 +9,8 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element;
 use Drupal\Core\Url;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\claro\ClaroLinkActionTrait;
+use Drupal\default_admin\Helper;
 
 /**
  * Implements hook_preprocess_page().
@@ -96,26 +98,61 @@ function asu_governance_help($route_name, RouteMatchInterface $route_match) {
  */
 function asu_governance_preprocess_links(&$variables) {
   $admin_theme = \Drupal::theme()->getActiveTheme()->getName();
-  if ($admin_theme === 'claro') {
-    // Convert links to action links.
-    foreach ($variables['links'] as $links_item) {
+  if ($admin_theme === 'default_admin') {
+    foreach ($variables['links'] as $key => $links_item) {
       if (!empty($links_item['link']) && !empty($links_item['link']['#url']) && $links_item['link']['#url'] instanceof Url) {
         if ($links_item['link']['#url']->isRouted()) {
           switch ($links_item['link']['#url']->getRouteName()) {
             case 'asu_governance.theme_settings_theme':
-              $links_item['link'] = _claro_convert_link_to_action_link($links_item['link'], 'cog', 'small');
+              $variables['links'][$key]['link'] = Helper::convertLinkToActionLink($links_item['link'], 'cog', 'small');
               break;
 
             case 'asu_governance.theme_uninstall':
-              $links_item['link'] = _claro_convert_link_to_action_link($links_item['link'], 'ex', 'small');
+              $variables['links'][$key]['link'] = Helper::convertLinkToActionLink($links_item['link'], 'ex', 'small');
               break;
 
             case 'asu_governance.theme_set_default':
-              $links_item['link'] = _claro_convert_link_to_action_link($links_item['link'], 'checkmark', 'small');
+              $variables['links'][$key]['link'] = Helper::convertLinkToActionLink($links_item['link'], 'checkmark', 'small');
               break;
 
             case 'asu_governance.theme_install':
-              $links_item['link'] = _claro_convert_link_to_action_link($links_item['link'], 'plus', 'small');
+              $variables['links'][$key]['link'] = Helper::convertLinkToActionLink($links_item['link'], 'plus', 'small');
+              break;
+          }
+        }
+      }
+    }
+  }
+  if ($admin_theme === 'claro') {
+    $claro_helper = new class {
+
+      use ClaroLinkActionTrait;
+
+      public function actionLink(array $link, string $icon, string $size): array {
+        // The trait method is protected, so this public wrapper exposes it.
+        return $this->convertLinkToActionLink($link, $icon, $size);
+      }
+
+    };
+
+    foreach ($variables['links'] as $key => $links_item) {
+      if (!empty($links_item['link']) && !empty($links_item['link']['#url']) && $links_item['link']['#url'] instanceof Url) {
+        if ($links_item['link']['#url']->isRouted()) {
+          switch ($links_item['link']['#url']->getRouteName()) {
+            case 'asu_governance.theme_settings_theme':
+              $variables['links'][$key]['link'] = $claro_helper->actionLink($links_item['link'], 'cog', 'small');
+              break;
+
+            case 'asu_governance.theme_uninstall':
+              $variables['links'][$key]['link'] = $claro_helper->actionLink($links_item['link'], 'ex', 'small');
+              break;
+
+            case 'asu_governance.theme_set_default':
+              $variables['links'][$key]['link'] = $claro_helper->actionLink($links_item['link'], 'checkmark', 'small');
+              break;
+
+            case 'asu_governance.theme_install':
+              $variables['links'][$key]['link'] = $claro_helper->actionLink($links_item['link'], 'plus', 'small');
               break;
           }
         }

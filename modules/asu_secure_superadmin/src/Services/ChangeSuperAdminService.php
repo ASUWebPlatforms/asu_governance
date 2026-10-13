@@ -3,7 +3,7 @@
 namespace Drupal\asu_secure_superadmin\Services;
 
 use Drupal\cas\Service\CasUserManager;
-use Drupal\Component\EventDispatcher\ContainerAwareEventDispatcher;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\user\Entity\User;
@@ -28,7 +28,7 @@ class ChangeSuperAdminService {
   /**
    * The event dispatcher.
    *
-   * @var \Drupal\Component\EventDispatcher\ContainerAwareEventDispatcher
+   * @var \Symfony\Component\EventDispatcher\EventDispatcher
    */
   protected $eventDispatcher;
 
@@ -86,7 +86,7 @@ class ChangeSuperAdminService {
    */
   public function __construct(
     EntityTypeManagerInterface $entityTypeManager,
-    ContainerAwareEventDispatcher $eventDispatcher,
+    EventDispatcher $eventDispatcher,
     DefaultPasswordGenerator $passwordGenerator,
     MessengerInterface $messenger,
     ModuleHandlerInterface $moduleHandler,
