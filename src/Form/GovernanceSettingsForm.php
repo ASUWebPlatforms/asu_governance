@@ -7,6 +7,7 @@ namespace Drupal\asu_governance\Form;
 use Drupal\asu_governance\Services\GovernanceConfigResolver;
 use Drupal\asu_governance\Services\ModulePermissionHandler;
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Config\TypedConfigManagerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Extension\ThemeHandlerInterface;
 use Drupal\Core\Form\ConfigFormBase;
@@ -38,14 +39,14 @@ final class GovernanceSettingsForm extends ConfigFormBase {
    *
    * @var \Drupal\asu_governance\Services\ModulePermissionHandler
    */
-  protected $modulePermissionHandler;
+  protected ModulePermissionHandler $modulePermissionHandler;
 
   /**
    * The database connection.
    *
    * @var \Drupal\Core\Database\Connection
    */
-  protected $connection;
+  protected Connection $connection;
 
   /**
    * The governance config resolver.
@@ -84,6 +85,8 @@ final class GovernanceSettingsForm extends ConfigFormBase {
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    *   The configuration factory.
+   * @param \Drupal\Core\Config\TypedConfigManagerInterface $typedConfigManager
+   *   The typed config manager.
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
    *   The module handler service.
    * @param \Drupal\Core\Extension\ThemeHandlerInterface $theme_handler
@@ -95,8 +98,8 @@ final class GovernanceSettingsForm extends ConfigFormBase {
    * @param \Drupal\asu_governance\Services\GovernanceConfigResolver $config_resolver
    *   The governance config resolver.
    */
-  public function __construct(ConfigFactoryInterface $config_factory, ModuleHandlerInterface $module_handler, ThemeHandlerInterface $theme_handler, ModulePermissionHandler $modulePermissionHandler, Connection $connection, GovernanceConfigResolver $config_resolver) {
-    parent::__construct($config_factory);
+  public function __construct(ConfigFactoryInterface $config_factory, TypedConfigManagerInterface $typedConfigManager, ModuleHandlerInterface $module_handler, ThemeHandlerInterface $theme_handler, ModulePermissionHandler $modulePermissionHandler, Connection $connection, GovernanceConfigResolver $config_resolver) {
+    parent::__construct($config_factory, $typedConfigManager);
     $this->moduleHandler = $module_handler;
     $this->themeHandler = $theme_handler;
     $this->modulePermissionHandler = $modulePermissionHandler;
@@ -110,6 +113,7 @@ final class GovernanceSettingsForm extends ConfigFormBase {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('config.factory'),
+      $container->get('config.typed'),
       $container->get('module_handler'),
       $container->get('theme_handler'),
       $container->get('asu_governance.module_permission_handler'),

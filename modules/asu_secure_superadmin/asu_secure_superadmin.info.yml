@@ -2,4 +2,4 @@ name: 'ASU Secure SuperAdmin'
 type: module
 description: 'This module is meant to secure the user 1 SuperAdmin account.'
 package: ASU
-core_version_requirement: ^10
+core_version_requirement: ^11

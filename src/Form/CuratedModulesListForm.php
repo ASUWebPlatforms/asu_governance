@@ -123,7 +123,7 @@ class CuratedModulesListForm extends ModulesListForm {
     $form = parent::buildForm($form, $form_state);
     $form['modules'] = [];
 
-    $this->messenger->addMessage($this->t('<p><strong>Please note:</strong> This is a filtered list of all the modules available to you in the site based on your user role/permissions.</p><p>If you do not see a module you previously had access to in Pantheon, please <a href="https://asu.edu/webservices">open a Web Services ticket</a> and we will assist you.</p>'), 'warning');
+    $this->messenger->addMessage($this->t('<p><strong>Please note:</strong> This is a filtered list of all the modules available to you in the site based on your user role/permissions.</p><p>If you do not see a module you previously had access to, please <a href="https://asu.edu/webservices">open a Web Services ticket</a> and we will assist you.</p>'), 'info');
 
     require_once DRUPAL_ROOT . '/core/includes/install.inc';
     $distribution = drupal_install_profile_distribution_name();

@@ -3,17 +3,20 @@
 namespace Drupal\asu_governance\Controller;
 
 use Drupal\asu_governance\Services\GovernanceConfigResolver;
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Extension\ExtensionLifecycle;
 use Drupal\Core\Extension\ModuleExtensionList;
 use Drupal\Core\Extension\ThemeExtensionList;
 use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Menu\MenuLinkTreeInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Theme\ThemeAccessCheck;
 use Drupal\Core\Url;
 use Drupal\system\SystemManager;
 use Drupal\system\Controller\SystemController;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * Returns responses for System routes.
@@ -49,17 +52,28 @@ class CuratedSystemController extends SystemController {
    *   The module extension list.
    * @param \Drupal\Core\Extension\ThemeExtensionList $theme_extension_list
    *   The theme extension list.
+   * @param \Drupal\Component\Datetime\TimeInterface $time
+   *   The time service.
    * @param \Drupal\asu_governance\Services\GovernanceConfigResolver $config_resolver
    *   The governance config resolver.
    */
-  public function __construct(SystemManager $systemManager, ThemeAccessCheck $theme_access, FormBuilderInterface $form_builder, MenuLinkTreeInterface $menu_link_tree, ModuleExtensionList $module_extension_list, ThemeExtensionList $theme_extension_list, GovernanceConfigResolver $config_resolver) {
+  public function __construct(
+    SystemManager $systemManager,
+    ThemeAccessCheck $theme_access,
+    FormBuilderInterface $form_builder,
+    MenuLinkTreeInterface $menu_link_tree,
+    ModuleExtensionList $module_extension_list,
+    ThemeExtensionList $theme_extension_list,
+    TimeInterface $time,
+    GovernanceConfigResolver $config_resolver) {
     parent::__construct(
       $systemManager,
       $theme_access,
       $form_builder,
       $menu_link_tree,
       $module_extension_list,
-      $theme_extension_list);
+      $theme_extension_list,
+      $time);
     $this->configResolver = $config_resolver;
     $this->allowableThemes = $this->configResolver->get('allowable_themes') ?? [];
   }
@@ -75,6 +89,7 @@ class CuratedSystemController extends SystemController {
       $container->get('menu.link_tree'),
       $container->get('extension.list.module'),
       $container->get('extension.list.theme'),
+      $container->get('datetime.time'),
       $container->get('asu_governance.config_resolver'),
     );
   }
@@ -85,6 +100,12 @@ class CuratedSystemController extends SystemController {
    * @return array
    *   The theme listing.
    */
+  #[Route(
+    path: '/admin/appearance',
+    name: 'system.themes_page',
+    requirements: ['_permission' => 'administer themes'],
+    defaults: ['_title' => new TranslatableMarkup('Appearance')],
+  )]
   public function themesPage() :array {
     $config = $this->config('system.theme');
     // Get all available themes.
@@ -171,8 +192,6 @@ class CuratedSystemController extends SystemController {
             continue;
           }
 
-          // @todo Add logic for not displaying hidden modules in
-          //   https://drupal.org/node/3117829.
           $module_name = $modules[$dependency]->info['name'];
           $theme->module_dependencies_list[$dependency] = $modules[$dependency]->status ? $this->t('@module_name', ['@module_name' => $module_name]) : $this->t('@module_name (<span class="admin-disabled">disabled</span>)', ['@module_name' => $module_name]);
 
@@ -283,7 +302,17 @@ class CuratedSystemController extends SystemController {
       $theme_group_titles['uninstalled'] = $this->formatPlural(count($theme_groups['uninstalled']), 'Uninstalled theme', 'Uninstalled themes');
     }
 
-    uasort($theme_groups['installed'], 'system_sort_themes');
+    $sortThemes = static function ($a, $b) {
+      if ($a->is_default) {
+        return -1;
+      }
+      if ($b->is_default) {
+        return 1;
+      }
+      return strcasecmp($a->info['name'], $b->info['name']);
+    };
+
+    uasort($theme_groups['installed'], $sortThemes);
     $this->moduleHandler()->alter('system_themes_page', $theme_groups);
 
     $build = [];
@@ -295,7 +324,7 @@ class CuratedSystemController extends SystemController {
     $build[] = $this->formBuilder->getForm('Drupal\system\Form\ThemeAdminForm', $admin_theme_options);
 
     // Add warning message.
-    \Drupal::messenger()->addMessage($this->t('<p><strong>Please note:</strong> This is a filtered list of all the themes available to you in the site based on your user role/permissions.</p><p>If you do not see a theme you previously had access to in Pantheon, please <a href="https://asu.edu/webservices">open a Web Services ticket</a> and we will assist you.</p>'), 'warning');
+    \Drupal::messenger()->addMessage($this->t('<p><strong>Please note:</strong> This is a filtered list of all the themes available to you in the site based on your user role/permissions.</p><p>If you do not see a theme you previously had access to, please <a href="https://asu.edu/webservices">open a Web Services ticket</a> and we will assist you.</p>'), 'info');
 
     return $build;
   }
