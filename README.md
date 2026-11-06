@@ -16,6 +16,7 @@ See: https://www.drupal.org/node/895232 for further information.
 ## Versions
 - The 1.x branch is the main branch, and it targets use of Drush ^12.5
 - The 2.x branch is the same as 1.x but targets the use of Drush ^13
+- The 3.x branch is for Drupal 11+.
 This is due to the fact that some deployments need different Drush versions.
 
 ## Configuration
